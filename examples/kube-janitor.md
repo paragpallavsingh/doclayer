@@ -1,4 +1,4 @@
-﻿# Subsystem: Kubernetes Namespace & Resource Janitor
+# Subsystem: Kubernetes Namespace & Resource Janitor
 
 **Package:** `src/modules/janitor/`  
 **Owner:** `@platform-infra` (Alerts: `EP-KUBE-JANITOR-TIER1`)
@@ -30,7 +30,7 @@ upstream = ["k8s-cronjob", "platform-cli"]
 downstream = ["k8s-api-server", "slack-alerts-webhook"]
 state_dependencies = ["k8s-etcd-state"]
 identity_invariants = ["namespace_uid_immutable"]
-safety_firewalls = ["never_delete_protected_namespaces"]
+safety_invariants = ["never_delete_protected_namespaces"]
 ```
 
 | Invariant / Contract | Why & Rationale | Reference | Evidence Anchor |

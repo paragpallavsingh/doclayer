@@ -9,7 +9,28 @@
 Zero-dependency, machine-verifiable engineering contract layer and AI agent safety harness. Provides epistemic rationale modeling, AST invariant drift detection, automated secret boundary enforcement, and negative runbook guardrails across three operational pillars: **Remember** (durable context), **Protect** (negative invariants), and **Verify** (AST contract drift).
 
 ```
-[Developer / AI Agent] --> [doclayer explain / check] --> [AST Parser & Git VCS]
+┌─────────────────────────────────┐
+│       Engineering Contract      │
+│   (.doclayer/doclayer-core.md)  │
+└────────────────┬────────────────┘
+                 │
+  ┌──────────────┴──────────────┐
+  ▼                             ▼
+AI AGENT                  CI / DEVELOPER
+(Understand Before Acting) (Verify After Changing)
+  │                             │
+doclayer explain          doclayer check
+  │                             │
+  └──────────────┬──────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────┐
+│          Evidence Layer         │
+│     (AST / Git / VCS / FS)      │
+└────────────────┬────────────────┘
+                 │
+                 ▼
+         DRIFT VERIFICATION
 ```
 
 ---
@@ -32,7 +53,7 @@ upstream = ["developer-cli", "ci-pipelines", "ai-agents"]
 downstream = ["git-vcs", "tomllib", "ast", "re"]
 state_dependencies = ["git-index"]
 identity_invariants = ["subsystem_slug_unique"]
-safety_firewalls = [
+safety_invariants = [
     "never_execute_untrusted_markdown",
     "never_store_credentials",
     "never_auto_mutate_code_without_pr"
@@ -41,11 +62,11 @@ safety_firewalls = [
 
 | Invariant / Contract | Why & Rationale | Reference | Evidence Anchor |
 | :--- | :--- | :--- | :--- |
-| `external_dependencies_count = 0` | Zero runtime dependencies; standard library only for instant startup and zero supply-chain risk | `AUTHOR-DIRECTIVE` | `doclayer/` |
-| `epistemic_tiers_count = 4` | 4-tier epistemic classification (Observed, Stated, Inferred, Unreferenced) to solve Chesterton's Fence dilemma | `README.md#epistemic-model` | `doclayer/` |
+| `external_dependencies_count = 0` | Zero runtime dependencies; standard library only for instant startup and zero supply-chain risk | `AUTHOR-DIRECTIVE` | `pyproject.toml::project.dependencies` |
+| `epistemic_tiers_count = 4` | 4-tier epistemic classification (Observed, Stated, Inferred, Unreferenced) to solve Chesterton's Fence dilemma | `README.md#epistemic-model` | `doclayer/parser.py::classify_epistemic_status` |
 | `total_core_sections = 4` | Standardized 4-section format for human and LLM predictability | `SPEC-CORE-SECTIONS` | `doclayer/validator.py::CORE_SECTIONS` |
 | `primary_agent_entrypoint = "explain"` | Single entry point for coding agents to inspect contracts and safety prohibitions pre-code | `AUTHOR-DIRECTIVE` | `doclayer/cli.py::cmd_explain` |
-| `scan_latency_p95_ms = 1` | Pre-commit hook latency threshold for seamless local developer experience | `SPEC-PERF-TARGET` | `scripts/benchmark_efficiency.py` |
+| `scan_latency_p95_ms = 1` | Pre-commit hook latency threshold for seamless local developer experience | `SPEC-PERF-TARGET` | `scripts/benchmark_efficiency.py::benchmark_single_layer_parse` |
 
 ---
 

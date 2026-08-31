@@ -29,7 +29,7 @@ upstream = ["upstream-service"]
 downstream = ["downstream-service"]
 state_dependencies = []
 identity_invariants = []
-safety_firewalls = []
+safety_invariants = []
 ```
 
 | Invariant / Contract | Why & Rationale | Reference | Evidence Anchor |

@@ -351,7 +351,8 @@ def cmd_explain(args: argparse.Namespace) -> int:
                 }
                 for item in report.runbook_items
             ],
-            "safety_firewalls": report.semantic_deps.safety_firewalls,
+            "safety_invariants": report.semantic_deps.safety_invariants,
+            "safety_firewalls": report.semantic_deps.safety_invariants,
             "drift_status": "PASS" if not report.drifts else "DRIFT_DETECTED",
             "drifts": [
                 {
@@ -403,8 +404,8 @@ def cmd_explain(args: argparse.Namespace) -> int:
     else:
         print(f"  {DIM}No negative invariant prohibitions declared.{RESET}")
 
-    if report.semantic_deps.safety_firewalls:
-        print(f"  * {BOLD}Active Safety Firewalls:{RESET} {', '.join(report.semantic_deps.safety_firewalls)}")
+    if report.semantic_deps.safety_invariants:
+        print(f"  * {BOLD}Active Safety Invariants:{RESET} {', '.join(report.semantic_deps.safety_invariants)}")
 
     # 3. Real-Time AST Drift Status
     print(f"\n{BOLD}3. Real-Time AST Drift Status:{RESET}")
@@ -455,8 +456,8 @@ def cmd_inspect(args: argparse.Namespace) -> int:
         print(f"  * {BOLD}State Dependencies:{RESET}   {', '.join(deps.state_dependencies)}")
     if deps.identity_invariants:
         print(f"  * {BOLD}Identity Invariants:{RESET}  {', '.join(deps.identity_invariants)}")
-    if deps.safety_firewalls:
-        print(f"  * {BOLD}Safety Firewalls:{RESET}     {', '.join(deps.safety_firewalls)}")
+    if deps.safety_invariants:
+        print(f"  * {BOLD}Safety Invariants:{RESET}     {', '.join(deps.safety_invariants)}")
 
     # 2. Invariant Contracts Table
     print(f"\n{BOLD}2. Declared Machine Contracts & Invariants ({len(report.contracts)}):{RESET}")

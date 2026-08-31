@@ -1,4 +1,4 @@
-﻿# Subsystem: Payment Engine & Stripe Settlement
+# Subsystem: Payment Engine & Stripe Settlement
 
 **Package:** `src/modules/payments/`  
 **Owner:** `@billing-core` (Alerts: `EP-PAYMENTS-TIER1`)
@@ -32,7 +32,7 @@ upstream = ["web-api", "stripe-webhooks"]
 downstream = ["stripe-api", "postgres-idempotency"]
 state_dependencies = ["idempotency_records", "stripe_events"]
 identity_invariants = ["idempotency_key_immutable", "order_id_unique"]
-safety_firewalls = [
+safety_invariants = [
     "never_store_unencrypted_card_data",
     "never_retry_settled_payment"
 ]

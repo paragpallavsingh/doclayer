@@ -60,6 +60,7 @@ class SemanticDependencies:
     downstream: List[str] = field(default_factory=list)
     state_dependencies: List[str] = field(default_factory=list)
     identity_invariants: List[str] = field(default_factory=list)
+    safety_invariants: List[str] = field(default_factory=list)
     safety_firewalls: List[str] = field(default_factory=list)
 
 
@@ -219,12 +220,14 @@ def extract_semantic_dependencies(inv_data: Optional[Dict[str, Any]]) -> Semanti
             return [val]
         return []
 
+    safety_invs = _to_list(deps_dict.get("safety_invariants") or deps_dict.get("safety_firewalls") or deps_dict.get("firewalls") or deps_dict.get("safety"))
     return SemanticDependencies(
         upstream=_to_list(deps_dict.get("upstream")),
         downstream=_to_list(deps_dict.get("downstream")),
         state_dependencies=_to_list(deps_dict.get("state_dependencies") or deps_dict.get("state")),
         identity_invariants=_to_list(deps_dict.get("identity_invariants") or deps_dict.get("identity")),
-        safety_firewalls=_to_list(deps_dict.get("safety_firewalls") or deps_dict.get("firewalls")),
+        safety_invariants=safety_invs,
+        safety_firewalls=safety_invs,
     )
 
 

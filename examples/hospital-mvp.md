@@ -1,4 +1,4 @@
-﻿# Subsystem: Hospital Emergency & EHR Care Delivery Platform
+# Subsystem: Hospital Emergency & EHR Care Delivery Platform
 
 **Package:** `src/hospital_mvp/`  
 **Owner:** `@clinical-platform` (Alerts: `EP-HOSPITAL-CARE-TIER1`)
@@ -57,7 +57,7 @@ upstream = ["ambulance-dispatch", "nurse-station-ui", "bedside-monitors"]
 downstream = ["hl7-fhir-gateway", "insurance-clearinghouse", "pagerduty-clinical"]
 state_dependencies = ["patient_ehr_store", "triage_priority_queue", "audit_trail_wal"]
 identity_invariants = ["medical_record_number_immutable", "clinician_npi_unique"]
-safety_firewalls = [
+safety_invariants = [
     "never_expose_unmasked_phi",
     "never_delete_medical_records",
     "never_bypass_clinical_audit_trail"

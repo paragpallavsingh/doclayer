@@ -16,12 +16,96 @@
 
 <p align="center">
   <strong>A durable engineering contract layer and safety harness for AI-assisted development.</strong><br>
-  Maintains architecture, machine-checked invariants, decisions, epistemic rationales, and negative runbooks separate from LLM context and Git history.
+  <em>DocLayer is self-describing and self-verifying: its own engineering contracts govern the codebase, and its drift engine verifies those contracts against implementation AST in CI.</em>
 </p>
 
 ---
 
-## ⚡ The 30-Second Demonstration
+## ⚡ The 2-Command Mental Model
+
+DocLayer replaces ambiguous documentation with a clean, two-step contract workflow:
+
+```text
+       ┌─────────────────────────────────┐
+       │       Engineering Contract      │
+       │         (.doclayer/*.md)        │
+       └────────────────┬────────────────┘
+                        │
+         ┌──────────────┴──────────────┐
+         ▼                             ▼
+      AI AGENT                   CI / DEVELOPER
+ (Understand Before Acting)   (Verify After Changing)
+         │                             │
+  doclayer explain               doclayer check
+         │                             │
+         └──────────────┬──────────────┘
+                        │
+                        ▼
+       ┌─────────────────────────────────┐
+       │          Evidence Layer         │
+       │      (AST / Code / Git / FS)    │
+       └────────────────┬────────────────┘
+                        │
+                        ▼
+                DRIFT VERIFICATION
+```
+
+* **`doclayer explain <target>` (Before Acting):** Retrieve declared invariants, negative safety prohibitions, and rationale evidence anchors in <1ms.
+* **`doclayer check [--strict]` (After Changing):** Verify whether code implementation still satisfies declared contracts.
+
+---
+
+## 🔁 Dogfooding: DocLayer Verifying DocLayer
+
+DocLayer uses its own engine to govern its own codebase via [`.doclayer/doclayer-core.md`](.doclayer/doclayer-core.md):
+
+### 1. Inspect Governance Contract Pre-Code
+```bash
+$ doclayer explain doclayer/
+```
+```text
+==============================================================================
+ DOCLAYER GOVERNANCE CONTRACT: doclayer Core Engine & Agent Harness
+==============================================================================
+  Governing Spec:   .doclayer/doclayer-core.md
+  Package Root:     doclayer/
+  Owner:            @doclayer-core (Alerts: EP-DOCLAYER-CORE)
+  Epistemic Score:  100.0% Stated (5 stated, 0 inferred, 0 unreferenced)
+
+1. Declared Invariant Contracts (5):
+  * external_dependencies_count = 0 [STATED] (Why: Zero runtime dependencies, AUTHOR-DIRECTIVE)
+  * epistemic_tiers_count = 4 [STATED] (Why: 4-tier epistemic classification, README.md#epistemic-model)
+  * total_core_sections = 4 [STATED] (Why: Standardized format, SPEC-CORE-SECTIONS)
+  * primary_agent_entrypoint = "explain" [STATED] (Why: Agent entry point, AUTHOR-DIRECTIVE)
+  * scan_latency_p95_ms = 1 [STATED] (Why: Pre-commit latency SLA, SPEC-PERF-TARGET)
+
+2. Agent Safety Harness & Prohibited Actions:
+  * PROHIBITED: NEVER commit credentials or output unmasked secrets in CLI logs
+  * PROHIBITED: NEVER grant autonomous root execution permissions to AI agents from markdown
+  * PROHIBITED: NEVER turn temporary workarounds into immutable dogma (Chesterton's Fence)
+  * Active Safety Invariants: never_execute_untrusted_markdown, never_store_credentials, never_auto_mutate_code_without_pr
+
+3. Real-Time AST Drift Status:
+  [PASS] Source code constants are fully aligned with declared DocLayer contracts.
+```
+
+### 2. Introduce Code Drift
+If a developer or AI agent edits `doclayer/validator.py` and changes `CORE_SECTIONS` from 4 to 5 without updating contracts:
+
+```bash
+$ doclayer check --strict
+```
+```text
+ [FAIL (STRICT DRIFT)]  .doclayer/doclayer-core.md (doclayer Core Engine & Agent Harness)
+         [STRICT DRIFT ERROR] Invariant 'total_core_sections': DocLayer=4 vs Code AST=5 (validator.py:12)
+         Evidence Anchor: doclayer/validator.py::CORE_SECTIONS
+
+Failed 1 of 1 subsystem layer(s).
+```
+
+---
+
+## ⚡ Agent Safety: The 30-Second Demonstration
 
 When an autonomous AI agent encounters a production error like `sqlite3.OperationalError: database is locked` (`ERR_DB_LOCKED`), source code alone does not convey operational prohibitions:
 
@@ -58,34 +142,13 @@ Resolves concurrency without dropping records.
 </tr>
 </table>
 
-See full reproducible benchmarks in [`examples/agent-evaluations/`](examples/agent-evaluations/).
+See full reproducible evaluation scenarios in [`examples/agent-evaluations/`](examples/agent-evaluations/).
 
 ---
 
 ## 🎯 The Core Triad: What DocLayer Does
 
 DocLayer is **not** a documentation wiki, RAG system, or AI memory store. It provides three concrete mechanisms:
-
-```
-                          THE SOFTWARE SYSTEM
-                                   │
-          ┌────────────────────────┼────────────────────────┐
-          ↓                        ↓                        ↓
-     SOURCE CODE                DOCLAYER                   GIT
-     What system           What engineers say            How both
-      executes              must remain true             evolved
-      src/*.py               .doclayer/*.md           VCS Commit Log
-          │                        │                        │
-          └────────────────────────┼────────────────────────┘
-                                   │
-                                   ▼
-                             DRIFT CHECKER
-                           (`doclayer check`)
-                                   │
-                                   ▼
-                "Are declared contracts still aligned
-                        with implementation AST?"
-```
 
 1. **Remember (Durable Engineering Context):** Stores topology, system boundaries, dependencies, and author rationales outside the LLM context window.
 2. **Protect (Negative Invariants & Safety Harness):** Encodes what autonomous coding agents must **NEVER** do during autonomous bug fixes and refactors.
@@ -207,7 +270,7 @@ upstream = ["k8s-cronjob", "platform-cli"]
 downstream = ["k8s-api-server", "slack-alerts-webhook"]
 state_dependencies = ["k8s-etcd-state"]
 identity_invariants = ["namespace_uid_immutable"]
-safety_firewalls = ["never_delete_protected_namespaces"]
+safety_invariants = ["never_delete_protected_namespaces"]
 ```
 
 | Invariant / Contract | Why & Rationale | Reference | Evidence Anchor |
