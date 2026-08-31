@@ -262,24 +262,174 @@ def cmd_check(args: argparse.Namespace) -> int:
 def cmd_inspect(args: argparse.Namespace) -> int:
     """Inspects a subsystem's full governance profile, contracts, dependencies, and agent safety runbooks."""
     subsystem = args.subsystem
-    layers_dir = Path(args.path) if hasattr(args, "path") and args.path else (Path(".doclayer") if Path(".doclayer").exists() else Path("docs/layers"))
+def find_layer_for_target(target: str, layers_dir: Optional[Path] = None) -> Optional[Path]:
+    """
+    Locates the governing doclayer markdown specification for a target:
+    - Direct layer markdown path
+    - Subsystem slug / name
+    - Source code file path (mapped via 'Package:' metadata header)
+    """
+    target_path = Path(target)
+    if target_path.is_file() and target_path.suffix == ".md":
+        return target_path
 
-    layer_file: Optional[Path] = None
-    if Path(subsystem).is_file():
-        layer_file = Path(subsystem)
+    search_dirs: List[Path] = []
+    if layers_dir and layers_dir.exists():
+        search_dirs.append(layers_dir)
+    if Path(".doclayer").exists():
+        search_dirs.append(Path(".doclayer"))
+    if Path("docs/layers").exists():
+        search_dirs.append(Path("docs/layers"))
+    if Path("examples").exists():
+        search_dirs.append(Path("examples"))
+
+    # 1. Direct name / slug matching (only .md files)
+    target_stem = Path(target).stem
+    slug = target_stem.lower().replace(" ", "-").replace("_", "-")
+    for d in search_dirs:
+        for name_cand in [f"{target_stem}.md", f"{slug}.md", f"{target}.md"]:
+            cand = d / name_cand
+            if cand.is_file() and cand.suffix == ".md":
+                return cand
+
+    # 2. Package path resolution (match source code file to declared Package)
+    target_clean = target.replace("\\", "/").strip("/")
+    for d in search_dirs:
+        for md_file in sorted(d.glob("*.md")):
+            doc = parse_layer_file(md_file)
+            if doc.package:
+                pkg_clean = doc.package.replace("\\", "/").strip("/")
+                if target_clean == pkg_clean or target_clean.startswith(pkg_clean) or pkg_clean in target_clean:
+                    return md_file
+
+    return None
+
+
+def cmd_explain(args: argparse.Namespace) -> int:
+    """Explains active contracts, negative invariant safety prohibitions, drift, and epistemic status for a target."""
+    target = args.target
+    layers_dir = Path(args.path) if hasattr(args, "path") and args.path else None
+    layer_file = find_layer_for_target(target, layers_dir=layers_dir)
+
+    if not layer_file or not layer_file.exists():
+        if getattr(args, "json", False):
+            import json
+            print(json.dumps({"error": f"No governing DocLayer subsystem found for '{target}'", "target": target}, indent=2))
+        else:
+            print(f"{RED}Error: No governing DocLayer subsystem layer found for '{target}'.{RESET}")
+            print(f"Tip: Run 'doclayer init {Path(target).stem}' to establish a contract layer.")
+        return 1
+
+    report = validate_file(layer_file)
+    doc = parse_layer_file(layer_file)
+
+    if getattr(args, "json", False):
+        import json
+        payload = {
+            "subsystem": report.title,
+            "layer_file": layer_file.as_posix(),
+            "package": doc.package,
+            "owner": doc.owner,
+            "epistemic_certainty_pct": report.epistemic_certainty_pct,
+            "contracts": [
+                {
+                    "invariant": c.invariant_expr,
+                    "rationale": c.rationale,
+                    "reference": c.reference,
+                    "anchor": c.evidence_anchor,
+                    "status": c.epistemic_status,
+                }
+                for c in report.contracts
+            ],
+            "safety_prohibitions": [
+                {
+                    "symptom": item.symptom,
+                    "probable_cause": item.probable_cause,
+                    "safe_remediation": item.safe_remediation,
+                    "prohibited_actions": item.prohibited_actions,
+                    "reference": item.reference,
+                }
+                for item in report.runbook_items
+            ],
+            "safety_firewalls": report.semantic_deps.safety_firewalls,
+            "drift_status": "PASS" if not report.drifts else "DRIFT_DETECTED",
+            "drifts": [
+                {
+                    "key": d.invariant_key,
+                    "doc_value": d.doc_value,
+                    "code_value": d.code_value,
+                    "file": d.file_path.name,
+                    "line": d.line_number,
+                }
+                for d in report.drifts
+            ],
+            "knowledge_debt": [
+                {
+                    "invariant": item.invariant_expr,
+                    "status": item.epistemic_status,
+                    "action_required": item.action_prompt,
+                }
+                for item in report.knowledge_debt
+            ],
+        }
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    print(f"\n{BOLD}{'=' * 78}{RESET}")
+    print(f" {CYAN}{BOLD}DOCLAYER GOVERNANCE CONTRACT:{RESET} {BOLD}{report.title}{RESET}")
+    print(f"{BOLD}{'=' * 78}{RESET}")
+    print(f"  {BOLD}Governing Spec:{RESET}   {layer_file.as_posix()}")
+    print(f"  {BOLD}Package Root:{RESET}     {doc.package or 'Unspecified'}")
+    print(f"  {BOLD}Owner:{RESET}            {doc.owner or 'Unassigned'}")
+    print(f"  {BOLD}Epistemic Score:{RESET}  {CYAN}{report.epistemic_certainty_pct}% Stated{RESET} ({report.stated_count} stated, {report.inferred_count} inferred, {report.unreferenced_count} unreferenced)")
+
+    # 1. Active Contracts & Invariants
+    print(f"\n{BOLD}1. Declared Invariant Contracts ({len(report.contracts)}):{RESET}")
+    if report.contracts:
+        for c in report.contracts:
+            status_tag = f"{GREEN}[STATED]{RESET}" if c.epistemic_status == "STATED" else (f"{MAGENTA}[INFERRED]{RESET}" if c.epistemic_status == "INFERRED" else f"{YELLOW}[UNREFERENCED]{RESET}")
+            print(f"  * {BOLD}{c.invariant_expr}{RESET} {status_tag}")
+            print(f"    Why: {c.rationale} ({c.reference})")
     else:
-        candidates = [
-            layers_dir / f"{subsystem}.md",
-            layers_dir / f"{subsystem.lower().replace(' ', '-')}.md",
-            Path(".doclayer") / f"{subsystem}.md",
-            Path(".doclayer") / f"{subsystem.lower().replace(' ', '-')}.md",
-            Path("docs/layers") / f"{subsystem}.md",
-            Path("docs/layers") / f"{subsystem.lower().replace(' ', '-')}.md",
-        ]
-        for c in candidates:
-            if c.exists():
-                layer_file = c
-                break
+        print(f"  {DIM}No formal invariant rows parsed.{RESET}")
+
+    # 2. Negative Invariants & Prohibitions (Safety Harness)
+    print(f"\n{BOLD}2. Agent Safety Harness & Prohibited Actions:{RESET}")
+    if report.runbook_items:
+        for item in report.runbook_items:
+            if item.prohibited_actions and item.prohibited_actions.strip() != "None specified":
+                print(f"  * {RED}{BOLD}PROHIBITED:{RESET} {RED}{item.prohibited_actions}{RESET}")
+                print(f"    On Error: `{item.symptom}` -> Safe Action: {item.safe_remediation}")
+    else:
+        print(f"  {DIM}No negative invariant prohibitions declared.{RESET}")
+
+    if report.semantic_deps.safety_firewalls:
+        print(f"  * {BOLD}Active Safety Firewalls:{RESET} {', '.join(report.semantic_deps.safety_firewalls)}")
+
+    # 3. Real-Time AST Drift Status
+    print(f"\n{BOLD}3. Real-Time AST Drift Status:{RESET}")
+    if not report.drifts:
+        print(f"  {GREEN}[PASS]{RESET} Source code constants are fully aligned with declared DocLayer contracts.")
+    else:
+        print(f"  {RED}{BOLD}[DRIFT DETECTED]{RESET} {len(report.drifts)} contract(s) diverge from implementation AST:")
+        for d in report.drifts:
+            print(f"    - Invariant '{d.invariant_key}': DocLayer={d.doc_value} vs Code={d.code_value} ({d.file_path.name}:{d.line_number})")
+
+    # 4. Knowledge Debt Prompts
+    if report.knowledge_debt:
+        print(f"\n{YELLOW}{BOLD}4. Actionable Knowledge Debt ({len(report.knowledge_debt)}):{RESET}")
+        for item in report.knowledge_debt:
+            print(f"  [ ] {item.invariant_expr} ({item.epistemic_status}): {item.action_prompt}")
+
+    print()
+    return 0
+
+
+def cmd_inspect(args: argparse.Namespace) -> int:
+    """Inspects a subsystem's full governance profile, contracts, dependencies, and agent safety runbooks."""
+    subsystem = args.subsystem
+    layers_dir = Path(args.path) if hasattr(args, "path") and args.path else None
+    layer_file = find_layer_for_target(subsystem, layers_dir=layers_dir)
 
     if not layer_file or not layer_file.exists():
         print(f"{RED}Error: Subsystem layer not found for '{subsystem}'.{RESET}")
@@ -412,6 +562,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
     subparsers = parser.add_subparsers(dest="command", help="Subcommands")
+
+    # explain (Primary Agent & Developer Entry Point)
+    explain_parser = subparsers.add_parser("explain", help="Explain active contracts, safety prohibitions, and drift for a file or subsystem")
+    explain_parser.add_argument("target", help="Subsystem name, slug, or source file path (e.g., src/janitor.py)")
+    explain_parser.add_argument("--path", default=None, help="Directory containing layer files")
+    explain_parser.add_argument("--json", action="store_true", help="Output machine-readable JSON for agent tool integration")
+    explain_parser.set_defaults(func=cmd_explain)
 
     # init
     init_parser = subparsers.add_parser("init", help="Scaffold a new subsystem markdown layer")

@@ -57,10 +57,10 @@ Section 3 tables must include:
 
 Whenever assigned a task (feature, bug fix, policy adjustment, or refactor), you **MUST** follow this workflow:
 
-1. **Read Subsystem Context (Pre-Code):** 
-   - *Discovery Rule 1 (File Path):* Check `.doclayer/<subsystem>.md` matching the target module or feature name.
-   - *Discovery Rule 2 (Package Mapping):* Inspect the `**Package:**` header in existing layer files to find the specification governing the files you are about to edit.
-   - *Discovery Rule 3 (Inspection Tool):* Run `doclayer inspect <subsystem>` to retrieve the full governance profile, active firewalls, and prohibited actions.
+1. **Inspect Subsystem Context (Pre-Code):** 
+   - *Primary Entry Point:* Run `doclayer explain <target_file_or_subsystem>` (or `doclayer explain <file> --json`) to retrieve active contracts, safety prohibitions, and AST drift status.
+   - *Direct Discovery:* Check `.doclayer/<subsystem>.md` matching the target module or feature name.
+   - *Package Mapping:* Inspect the `**Package:**` header in existing layer files to find the specification governing the files you are about to edit.
 2. **Respect Declared Contracts & Prohibitions:** Implement logic strictly bounded by declared invariants, safety limits, and negative runbook prohibitions.
 3. **Post-Edit Reflex:** After modifying code, determine whether durable engineering truth changed (invariants, boundaries, dependencies, failure modes).
 4. **Propose DocLayer Diff:** If durable truth changed, propose a Markdown diff for `.doclayer/<subsystem>.md` alongside your code diff for human PR review.

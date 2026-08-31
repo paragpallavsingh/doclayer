@@ -9,119 +9,157 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue?style=flat-square" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/dependencies-0%20external-brightgreen?style=flat-square" alt="Zero Dependencies">
-  <img src="https://img.shields.io/badge/tests-20%20passed-success?style=flat-square" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-25%20passed-success?style=flat-square" alt="Tests">
   <img src="https://img.shields.io/badge/latency-%3C1ms%20scan-cyan?style=flat-square" alt="Latency">
   <img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="Apache 2.0">
 </p>
 
 <p align="center">
-  <strong>Durable engineering context & agent safety harness for software systems.</strong><br>
-  Maintains architecture, invariants, decisions, epistemic rationales, and negative runbooks separate from the LLM context window and Git history.
+  <strong>A durable engineering contract layer and safety harness for AI-assisted development.</strong><br>
+  Maintains architecture, machine-checked invariants, decisions, epistemic rationales, and negative runbooks separate from LLM context and Git history.
 </p>
 
 ---
 
-## ⚡ The Problem & The Difference
+## ⚡ The 30-Second Demonstration
+
+When an autonomous AI agent encounters a production error like `sqlite3.OperationalError: database is locked` (`ERR_DB_LOCKED`), source code alone does not convey operational prohibitions:
 
 <table>
 <tr>
-<th width="50%">❌ Autonomous Agent Without DocLayer</th>
-<th width="50%">✅ Autonomous Agent With DocLayer</th>
+<th width="50%">❌ Agent Without DocLayer</th>
+<th width="50%">🛡️ Agent With DocLayer (`doclayer explain`)</th>
 </tr>
 <tr>
 <td valign="top">
 
-* 💥 **Destructive Naive Fixes:** Hits `ERR_DB_LOCKED`, deletes `sqlite.db` or drops table to clear lock.
-* 🤥 **Hallucinated Authority:** Inlines arbitrary magic numbers (`timeout = 10`) claiming "standard best practice" or inventing fake ADRs.
-* 🔒 **Dogma Lock-In:** Discovers an undocumented workaround in code and hardcodes it as immutable architecture forever.
-* 🚨 **Secret Leaks:** Accurately commits live API keys or credentials into documentation during scans.
+```python
+# Agent inspects code -> sees lock error
+# Naively deletes database file to clear lock:
+except sqlite3.OperationalError:
+    os.remove("data/screener.db")  # 💥
+    init_fresh_db()
+```
+**Outcome: CATASTROPHIC DATA LOSS**  
+All historical production tables wiped.
 
 </td>
 <td valign="top">
 
-* 🛡️ **Negative Invariant Guardrails:** Reads Section 3 Runbook: *"NEVER delete database to clear lock; wait 500ms backoff (`INC-109`)"*.
-* 🧠 **Epistemic Certainty Tiers:** Explicitly tags machine constants as `STATED` (ADR/RFC), `[INFERRED]` (heuristic), or `UNREFERENCED` (Knowledge Debt).
-* 🧱 **AST Invariant Drift Checks:** CI diagnostic (`doclayer check`) catches code constants diverging from declared contracts.
-* 🔒 **Zero-Secret Boundary:** Built-in scanner rejects API keys, JWTs, and passwords before commit.
+```bash
+$ doclayer explain src/db.py
+PROHIBITED: NEVER delete database or drop tables to clear lock contention (INC-109).
+Safe Action: PRAGMA busy_timeout = 5000 + exponential backoff retry.
+```
+**Outcome: 100% SAFE REMEDIATION**  
+Resolves concurrency without dropping records.
 
 </td>
 </tr>
 </table>
 
----
-
-## 🎯 The Core Model
-
-```
-                         THE SOFTWARE SYSTEM
-                                  │
-         ┌────────────────────────┼────────────────────────┐
-         ↓                        ↓                        ↓
-    SOURCE CODE                DOCLAYER                   GIT
- What the system          What engineers say            How both
-   implements              must remain true             evolved
-    src/*.py                .doclayer/*.md           VCS Commit Log
-         │                        │                        │
-         └────────────────────────┼────────────────────────┘
-                                  │
-                                  ▼
-                            DRIFT CHECKER
-                          (`doclayer check`)
-                                  │
-                                  ▼
-             "Are declared contracts still aligned
-                     with implementation?"
-```
-
-| Component | Responsibility |
-| :--- | :--- |
-| **Source Code** | **Implementation truth.** What the system actually executes. |
-| **DocLayer (`.doclayer/*.md`)** | **Durable engineering context & contracts.** What engineers say must remain true across all environments. |
-| **Git** | **Historical truth.** How code and contracts evolved over time. |
-| **Drift Checker (`doclayer check`)** | **Diagnostic verification.** Validates invariant AST drift, audits epistemic knowledge debt, and checks secret safety without mutating files. |
-| **AI Agent** | **Participant.** Reads context before coding; obeys negative runbook guardrails; proposes DocLayer updates when contracts change. |
-| **Human Owner** | **Authority.** Reviews code + DocLayer diffs together during PR review; resolves knowledge debt prompts. |
+See full reproducible benchmarks in [`examples/agent-evaluations/`](examples/agent-evaluations/).
 
 ---
 
-## 📦 Installation & Setup
+## 🎯 The Core Triad: What DocLayer Does
 
-`doclayer` requires **Python 3.11+** (standard library `tomllib`) and has **zero external package dependencies**.
+DocLayer is **not** a documentation wiki, RAG system, or AI memory store. It provides three concrete mechanisms:
 
-### 1. Developer CLI & CI
+```
+                          THE SOFTWARE SYSTEM
+                                   │
+          ┌────────────────────────┼────────────────────────┐
+          ↓                        ↓                        ↓
+     SOURCE CODE                DOCLAYER                   GIT
+     What system           What engineers say            How both
+      executes              must remain true             evolved
+      src/*.py               .doclayer/*.md           VCS Commit Log
+          │                        │                        │
+          └────────────────────────┼────────────────────────┘
+                                   │
+                                   ▼
+                             DRIFT CHECKER
+                           (`doclayer check`)
+                                   │
+                                   ▼
+                "Are declared contracts still aligned
+                        with implementation AST?"
+```
+
+1. **Remember (Durable Engineering Context):** Stores topology, system boundaries, dependencies, and author rationales outside the LLM context window.
+2. **Protect (Negative Invariants & Safety Harness):** Encodes what autonomous coding agents must **NEVER** do during autonomous bug fixes and refactors.
+3. **Verify (AST Contract Drift Detection):** Machine-checks declared contracts against actual code constants (`doclayer check --strict`) in CI without mutating files.
+
+> [!IMPORTANT]
+> **The Authority Principle:**  
+> *DocLayer does not decide what is true. It records, classifies, and verifies claims made by engineering owners.*  
+> Agents may propose updates to DocLayer, but they cannot silently establish architectural authority.
+
+---
+
+## 🧭 Agent Entry Point: `doclayer explain`
+
+Before writing or refactoring code, an AI agent (or developer) runs `doclayer explain` on the target file or subsystem:
 
 ```bash
-# Editable install from repo:
-pip install -e .
-
-# Or run directly without installation:
-python -m doclayer.cli --help
+doclayer explain src/modules/janitor/
 ```
 
-### 2. For AI Coding Agents (Claude Code, Antigravity, Cursor, Codex)
+#### Output:
+```text
+==============================================================================
+ DOCLAYER GOVERNANCE CONTRACT: Kubernetes Namespace & Resource Janitor
+==============================================================================
+  Governing Spec:   .doclayer/kube-janitor.md
+  Package Root:     src/modules/janitor/
+  Owner:            @platform-infra (Alerts: EP-KUBE-JANITOR-TIER1)
+  Epistemic Score:  100.0% Stated (3 stated, 0 inferred, 0 unreferenced)
 
-DocLayer ships with a universal agent engineering directive in [`SKILL.md`](SKILL.md).
+1. Declared Invariant Contracts (3):
+  * max_eviction_batch_size = 200 [STATED]
+    Why: Prevent etcd write serialization bottleneck (RFC-204)
+  * dry_run_default = true [STATED]
+    Why: Prevent accidental mass deletion during CLI runs (INC-3301)
+  * default_ttl_hours = 24 [STATED]
+    Why: Default preview namespace lifespan (ADR-042)
 
-* **Antigravity / Gemini CLI:** Automatically discovers `SKILL.md` in repository root.
-* **Claude Code / Codex:** Copy or symlink [`SKILL.md`](SKILL.md) into your project's `.agents/skills/doclayer/SKILL.md` or system prompt rules.
-* **Any Agent:** Instruct your agent: *"Read `.doclayer/<subsystem>.md` before modifying code. Follow declared AST invariants and negative runbook prohibitions."*
+2. Agent Safety Harness & Prohibited Actions:
+  * PROHIBITED: Do not bypass rate limiting or spawn concurrent worker threads
+    On Error: `ERR_API_THROTTLED` -> Safe Action: Verify batch size <= 200; back off
+  * PROHIBITED: NEVER override protected namespace whitelist
+    On Error: `ERR_PROTECTED_NS` -> Safe Action: Abort run; check namespace filter rules
+  * Active Safety Firewalls: never_delete_protected_namespaces
+
+3. Real-Time AST Drift Status:
+  [PASS] Source code constants are fully aligned with declared DocLayer contracts.
+```
+
+For programmatic tool calls, pass `--json` to retrieve structured JSON payloads.
 
 ---
 
 ## 🧠 The 4-Tier Epistemic Rationale Model
 
-To prevent AI agents from hallucinating institutional authority or converting arbitrary heuristics into rigid dogma, DocLayer explicitly classifies rationale certainty into 4 tiers:
+To prevent AI agents from converting arbitrary heuristics or temporary workarounds into permanent architectural dogma (*Chesterton's Fence*), DocLayer classifies rationale certainty into 4 tiers:
 
-1. **Observed:** Machine-enforceable constant extracted directly from source code AST (`timeout_seconds = 3`).
-2. **Stated:** Grounded in an explicit author ADR, RFC, or incident ticket (`Reference: ADR-042`).
-3. **Inferred:** Heuristic hypothesis deduced by an AI agent or tooling, explicitly tagged (`[INFERRED]`).
-4. **Unreferenced (Knowledge Debt):** Known implementation constraint observed in code whose institutional rationale is not yet recorded (`Reference: UNREFERENCED`).
+| Tier | Status | Definition & Format | Example |
+| :--- | :--- | :--- | :--- |
+| **1. Observed** | AST Constant | Literal machine constant extracted directly from source code AST. | `timeout_seconds = 3` |
+| **2. Stated** | `STATED` | Formally grounded in an explicit author ADR, RFC, or INC ticket. | `Reference: ADR-042` |
+| **3. Inferred** | `[INFERRED]` | Heuristic hypothesis deduced by an AI agent or tooling; marked as hypothetical. | `[INFERRED] Sized to prevent buffer overrun` |
+| **4. Unreferenced** | `UNREFERENCED` | Implementation constraint observed in code whose institutional rationale is not yet recorded (**Knowledge Debt**). | `Reference: UNREFERENCED` |
+
+Audit knowledge debt at any time:
+```bash
+doclayer check --debt
+```
 
 ---
 
 ## 🛡️ Agent Safety Runbooks (Negative Invariants)
 
-Standard runbooks tell a human how to fix something. **Agent-Grade Runbooks encode what NOT to do** (Negative Invariants) to prevent destructive naive remediations by autonomous AI agents:
+Standard runbooks tell a human how to fix something. **Agent-Grade Runbooks explicitly encode what NOT to do** (Negative Invariants) to prevent destructive naive remediations by autonomous agents:
 
 ```markdown
 ## 3. Failure Modes & Agent Safety Runbook
@@ -129,6 +167,7 @@ Standard runbooks tell a human how to fix something. **Agent-Grade Runbooks enco
 | Symptom / Error | Probable Root Cause | Safe Remediation | Prohibited Actions (What NOT to do) | Reference |
 | :--- | :--- | :--- | :--- | :--- |
 | `ERR_DB_LOCKED` | SQLite file locked by external process | Wait 500ms and retry transaction | NEVER delete or recreate screener.db to clear a lock | `INC-109` |
+| `ERR_API_THROTTLED` | Eviction rate hitting API server ceiling | Verify batch size <= 200; back off | Do not bypass rate limiting or spawn concurrent worker threads | `RFC-204` |
 ```
 
 ---
@@ -183,7 +222,7 @@ safety_firewalls = ["never_delete_protected_namespaces"]
 
 | Symptom / Error | Probable Root Cause | Safe Remediation | Prohibited Actions (What NOT to do) | Reference |
 | :--- | :--- | :--- | :--- | :--- |
-| `ERR_API_THROTTLED` | Eviction rate hitting API server ceiling. | Verify batch size <= 200; back off. | Do not bypass rate limiting or spawn concurrent worker threads. | `RFC-204` |
+| `ERR_API_THROTTLED` | Eviction rate hitting API server ceiling | Verify batch size <= 200; back off | Do not bypass rate limiting or spawn concurrent worker threads | `RFC-204` |
 
 ---
 
@@ -197,52 +236,33 @@ safety_firewalls = ["never_delete_protected_namespaces"]
 
 ## 🚀 CLI Commands & Workflows
 
-### 1. Initialize Subsystem
+### 1. Explain Subsystem / File Contracts (Agent Pre-Code Entry Point)
+```bash
+doclayer explain src/janitor.py
+doclayer explain kube-janitor --json
+```
+
+### 2. Verify Invariants & AST Contract Drift
+```bash
+# Standard validation
+doclayer check
+
+# Strict CI mode: fail if code constants drift from DocLayer
+doclayer check --strict
+
+# Audit Knowledge Debt & Epistemic Certainty
+doclayer check --debt
+
+# Fast delta check for Git pre-commit (<15ms)
+doclayer check --changed
+```
+
+### 3. Initialize Subsystem Contract Layer
 ```bash
 doclayer init kube-janitor \
   --title "Kubernetes Namespace Janitor" \
   --package "src/janitor.py" \
   --owner "@platform-infra"
-```
-
-### 2. Verify Invariants & Check Knowledge Debt
-```bash
-# Standard validation
-doclayer check
-
-# Audit Knowledge Debt & Epistemic Certainty
-doclayer check --debt
-
-# Fast delta check for CI & Pre-Commit (<15ms)
-doclayer check --changed
-```
-
-#### Output with Knowledge Debt Audit:
-```text
-doclayer check: Inspecting 1 subsystem layer file(s)...
-
- [PASS]  .doclayer/kube-janitor.md (Kubernetes Namespace Janitor)
-         Invariants verified: max_eviction_batch_size, dry_run_default, default_ttl_hours
-         Safety runbooks: 1 negative invariant guardrails active
-
-------------------------------------------------------------
-All 1 subsystem layers passed invariant and contract checks.
-
-Knowledge Debt & Epistemic Audit:
-  Overall Epistemic Certainty: 66.7% (2/3 grounded)
-  Unreferenced Invariants:     1
-  Inferred Heuristics:        0
-
-  Subsystem              | Invariant                      | Status       | Action Required
-  ------------------------------------------------------------------------------------------
-  Kubernetes Namespace   | default_ttl_hours = 24         | UNREFERENCED | Constraint observed in code without institutional reference. Attach 1-line author rationale.
-```
-
-### 3. Inspect Subsystem Governance Profile
-Ask *"What contracts, dependencies, and prohibitions govern this subsystem?"*:
-
-```bash
-doclayer inspect kube-janitor
 ```
 
 ### 4. Record Incident Post-Mortems (RCA)
@@ -260,9 +280,31 @@ doclayer rca \
 
 ---
 
+## 📦 Installation & Setup
+
+`doclayer` requires **Python 3.11+** (standard library `tomllib`) and has **zero external package dependencies**.
+
+### Developer CLI & CI
+```bash
+# Editable install from repo:
+pip install -e .
+
+# Or run directly without installation:
+python -m doclayer.cli --help
+```
+
+### For AI Coding Agents (Claude Code, Antigravity, Cursor, Codex)
+DocLayer ships with a universal agent engineering directive in [`SKILL.md`](SKILL.md).
+
+* **Antigravity / Gemini CLI:** Automatically discovers `SKILL.md` in repository root.
+* **Claude Code / Codex:** Copy or symlink [`SKILL.md`](SKILL.md) into your project's `.agents/skills/doclayer/SKILL.md` or system prompt rules.
+* **Universal Rule:** Instruct your agent: *"Run `doclayer explain <file>` before modifying code. Follow declared AST invariants and negative runbook prohibitions."*
+
+---
+
 ## ⚡ Performance & Scalability
 
-Benchmarked with `scripts/benchmark_efficiency.py` across single-layer micro-benchmarks and synthetic monorepo stress tests (500+ subsystems):
+Benchmarked with `scripts/benchmark_efficiency.py` across micro-benchmarks and large monorepo stress tests (500+ subsystems):
 
 | Operation | Latency (Avg) | Latency (P95) | Throughput |
 | :--- | :--- | :--- | :--- |
