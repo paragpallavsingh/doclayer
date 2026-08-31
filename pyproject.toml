@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "doclayer"
+version = "0.1.0"
+description = "Living engineering context harness for software subsystems"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "doclayer core team" }
+]
+dependencies = []
+keywords = [
+    "documentation",
+    "architecture",
+    "ai-agents",
+    "invariants",
+    "epistemic-rationale",
+    "safety-harness",
+    "runbooks"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Quality Assurance",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
+[project.scripts]
+doclayer = "doclayer.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["doclayer*"]
+
+[tool.setuptools.package-data]
+doclayer = ["templates/*.md"]
