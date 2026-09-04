@@ -37,9 +37,41 @@ def get_template_path() -> Path:
 
 
 def cmd_init(args: argparse.Namespace) -> int:
-    """Scaffolds a new docs/layers/<subsystem>.md file."""
-    subsystem_slug = args.subsystem.lower().replace(" ", "-").replace("_", "-")
+    """Scaffolds a new subsystem markdown layer or initializes workspace."""
+    subsystem = getattr(args, "subsystem", None)
     output_dir = Path(args.dir)
+
+    # Workspace-level init (no subsystem provided)
+    if not subsystem:
+        target_dir = output_dir
+        if args.dir == ".doclayer" and not target_dir.exists() and Path("docs/layers").exists():
+            target_dir = Path("docs/layers")
+
+        layers = sorted(target_dir.glob("*.md")) if target_dir.exists() else []
+        dir_display = target_dir.as_posix()
+        if not dir_display.endswith("/"):
+            dir_display += "/"
+
+        if target_dir.exists() and layers:
+            count = len(layers)
+            layer_str = f"{count} layer{'s' if count != 1 else ''} found"
+            print(f"{GREEN}{BOLD}[OK] doclayer already initialized in {dir_display} ({layer_str}):{RESET}")
+            for layer in layers:
+                print(f"  - {layer.name}")
+            print("Next steps:")
+            print("  - Run 'doclayer check' to validate invariants.")
+            print("  - Run 'doclayer explain <file>' to view active contracts.")
+            print("  - Run 'doclayer init <name>' to scaffold a new subsystem.")
+            return 0
+
+        target_dir.mkdir(parents=True, exist_ok=True)
+        print(f"{GREEN}{BOLD}[OK] Initialized empty doclayer workspace in {dir_display}{RESET}")
+        print("Next steps:")
+        print("  - Run 'doclayer init <name>' to scaffold a new subsystem.")
+        print("  - Run 'doclayer check' to validate invariants.")
+        return 0
+
+    subsystem_slug = subsystem.lower().replace(" ", "-").replace("_", "-")
     target_file = output_dir / f"{subsystem_slug}.md"
 
     if target_file.exists() and not args.force:
@@ -52,7 +84,7 @@ def cmd_init(args: argparse.Namespace) -> int:
         return 1
 
     content = template_path.read_text(encoding="utf-8-sig")
-    title = args.title or args.subsystem.replace("-", " ").replace("_", " ").title()
+    title = args.title or subsystem.replace("-", " ").replace("_", " ").title()
     package_path = args.package or f"src/modules/{subsystem_slug}/"
     owner_team = args.owner or f"@{subsystem_slug}-team"
     alert_channel = args.alert or f"EP-{subsystem_slug.upper()}-TIER1"
@@ -572,8 +604,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     explain_parser.set_defaults(func=cmd_explain)
 
     # init
-    init_parser = subparsers.add_parser("init", help="Scaffold a new subsystem markdown layer")
-    init_parser.add_argument("subsystem", help="Subsystem name or slug (e.g., payment, auth-router)")
+    init_parser = subparsers.add_parser("init", help="Scaffold a new subsystem markdown layer or initialize workspace")
+    init_parser.add_argument("subsystem", nargs="?", default=None, help="Subsystem name or slug (e.g., payment, auth-router)")
     init_parser.add_argument("--dir", default=".doclayer", help="Destination directory (default: .doclayer)")
     init_parser.add_argument("--title", help="Human-readable title")
     init_parser.add_argument("--package", help="Target source package path")

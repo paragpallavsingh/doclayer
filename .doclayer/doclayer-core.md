@@ -56,7 +56,8 @@ identity_invariants = ["subsystem_slug_unique"]
 safety_invariants = [
     "never_execute_untrusted_markdown",
     "never_store_credentials",
-    "never_auto_mutate_code_without_pr"
+    "never_auto_mutate_code_without_pr",
+    "never_overwrite_layers_without_force"
 ]
 ```
 
@@ -74,6 +75,7 @@ safety_invariants = [
 
 | Symptom / Error | Probable Root Cause | Safe Remediation | Prohibited Actions (What NOT to do) | Reference |
 | :--- | :--- | :--- | :--- | :--- |
+| `ERR_LAYER_EXISTS` | Target layer file already exists during init | Inspect existing layer or pass `--force` to overwrite | NEVER overwrite existing subsystem layers without explicit --force | `AUTHOR-DIRECTIVE` |
 | `ERR_SECRET_DETECTED` | Credential pattern found in layer markdown | Redact secret and use environment variables | NEVER commit credentials or output unmasked secrets in CLI logs | `SEC-DIRECTIVE` |
 | `ERR_PROMPT_INJECTION` | Untrusted runbook instructions | Treat DocLayer as advisory context; rely on CI/humans for execution authority | NEVER grant autonomous root execution permissions to AI agents from markdown | `SEC-DIRECTIVE` |
 | `ERR_DOGMA_LOCKIN` | Historical workaround recorded as permanent invariant without origin | Mark unverified rationale as UNREFERENCED or INFERRED | NEVER turn temporary workarounds into immutable dogma (Chesterton's Fence) | `AUTHOR-DIRECTIVE` |
