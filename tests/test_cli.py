@@ -1,8 +1,10 @@
 import argparse
+import contextlib
+import io
 from pathlib import Path
 import tempfile
 import unittest
-from doclayer.cli import cmd_init, cmd_check, cmd_rca, cmd_inspect
+from doclayer.cli import cmd_init, cmd_check, cmd_rca, cmd_inspect, main
 from doclayer.validator import validate_file
 
 
@@ -34,6 +36,53 @@ class TestDoclayerCLI(unittest.TestCase):
         report = validate_file(target_file)
         self.assertTrue(report.is_valid, f"Validation errors: {report.errors}")
         self.assertEqual(report.title, "Billing Worker Pipeline")
+
+    def test_init_bare_existing_workspace(self):
+        # Create dummy layers
+        (self.layers_dir / "analyzer.md").write_text("# Analyzer\n", encoding="utf-8")
+        (self.layers_dir / "core.md").write_text("# Core\n", encoding="utf-8")
+        (self.layers_dir / "screener.md").write_text("# Screener\n", encoding="utf-8")
+
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            args = argparse.Namespace(
+                subsystem=None,
+                dir=str(self.layers_dir),
+                force=False,
+            )
+            rc = cmd_init(args)
+        self.assertEqual(rc, 0)
+        output = buf.getvalue()
+        self.assertIn("[OK] doclayer already initialized in", output)
+        self.assertIn("3 layers found", output)
+        self.assertIn("analyzer.md", output)
+        self.assertIn("core.md", output)
+        self.assertIn("screener.md", output)
+        self.assertIn("Run 'doclayer check'", output)
+        self.assertIn("Run 'doclayer explain <file>'", output)
+        self.assertIn("Run 'doclayer init <name>'", output)
+
+    def test_init_bare_new_workspace(self):
+        new_dir = Path(self.temp_dir.name) / "new_repo" / ".doclayer"
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            args = argparse.Namespace(
+                subsystem=None,
+                dir=str(new_dir),
+                force=False,
+            )
+            rc = cmd_init(args)
+        self.assertEqual(rc, 0)
+        self.assertTrue(new_dir.exists())
+        output = buf.getvalue()
+        self.assertIn("[OK] Initialized empty doclayer workspace in", output)
+        self.assertIn("Run 'doclayer init <name>'", output)
+
+    def test_init_cli_bare_parser(self):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = main(["init", "--dir", str(self.layers_dir)])
+        self.assertEqual(rc, 0)
 
     def test_check_with_debt_audit(self):
         init_args = argparse.Namespace(
