@@ -9,7 +9,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue?style=flat-square" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/dependencies-0%20external-brightgreen?style=flat-square" alt="Zero Dependencies">
-  <img src="https://img.shields.io/badge/tests-25%20passed-success?style=flat-square" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-28%20passed-success?style=flat-square" alt="Tests">
   <img src="https://img.shields.io/badge/latency-%3C1ms%20scan-cyan?style=flat-square" alt="Latency">
   <a href="https://www.producthunt.com/products/doclayer"><img src="https://img.shields.io/badge/Product%20Hunt-DocLayer-orange?style=flat-square&logo=producthunt" alt="Product Hunt"></a>
   <img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="Apache 2.0">
