@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.png" width="680" alt="doclayer: Living engineering context harness & agent safety layer">
+  <img src="https://raw.githubusercontent.com/paragpallavsingh/doclayer/main/assets/banner.png" width="680" alt="doclayer: Living engineering context harness & agent safety layer">
 </p>
 
 <p align="center">
@@ -58,7 +58,7 @@ DocLayer replaces ambiguous documentation with a clean, two-step contract workfl
 
 ## 🔁 Dogfooding: DocLayer Verifying DocLayer
 
-DocLayer uses its own engine to govern its own codebase via [`.doclayer/doclayer-core.md`](.doclayer/doclayer-core.md):
+DocLayer uses its own engine to govern its own codebase via [`.doclayer/doclayer-core.md`](https://github.com/paragpallavsingh/doclayer/blob/main/.doclayer/doclayer-core.md):
 
 ### 1. Inspect Governance Contract Pre-Code
 ```bash
@@ -143,7 +143,7 @@ Resolves concurrency without dropping records.
 </tr>
 </table>
 
-See full reproducible evaluation scenarios in [`examples/agent-evaluations/`](examples/agent-evaluations/).
+See full reproducible evaluation scenarios in [`examples/agent-evaluations/`](https://github.com/paragpallavsingh/doclayer/tree/main/examples/agent-evaluations/).
 
 ---
 
@@ -348,9 +348,19 @@ doclayer rca \
 
 `doclayer` requires **Python 3.11+** (standard library `tomllib`) and has **zero external package dependencies**.
 
-### Developer CLI & CI
+### Standard Installation
 ```bash
-# Editable install from repo:
+# Install from PyPI:
+pip install doclayer
+
+# Or install latest directly from GitHub:
+pip install "git+https://github.com/paragpallavsingh/doclayer.git"
+```
+
+### Contributor / Local Development
+```bash
+git clone https://github.com/paragpallavsingh/doclayer.git
+cd doclayer
 pip install -e .
 
 # Or run directly without installation:
@@ -358,10 +368,10 @@ python -m doclayer.cli --help
 ```
 
 ### For AI Coding Agents (Claude Code, Antigravity, Cursor, Codex)
-DocLayer ships with a universal agent engineering directive in [`SKILL.md`](SKILL.md).
+DocLayer ships with a universal agent engineering directive in [`SKILL.md`](https://github.com/paragpallavsingh/doclayer/blob/main/SKILL.md).
 
 * **Antigravity / Gemini CLI:** Automatically discovers `SKILL.md` in repository root.
-* **Claude Code / Codex:** Copy or symlink [`SKILL.md`](SKILL.md) into your project's `.agents/skills/doclayer/SKILL.md` or system prompt rules.
+* **Claude Code / Codex:** Copy or symlink [`SKILL.md`](https://github.com/paragpallavsingh/doclayer/blob/main/SKILL.md) into your project's `.agents/skills/doclayer/SKILL.md` or system prompt rules.
 * **Universal Rule:** Instruct your agent: *"Run `doclayer explain <file>` before modifying code. Follow declared AST invariants and negative runbook prohibitions."*
 
 ---
@@ -381,4 +391,4 @@ Benchmarked with `scripts/benchmark_efficiency.py` across micro-benchmarks and l
 ---
 
 ## 📜 License
-Distributed under the [Apache License 2.0](LICENSE).
+Distributed under the [Apache License 2.0](https://github.com/paragpallavsingh/doclayer/blob/main/LICENSE).
