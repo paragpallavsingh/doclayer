@@ -164,42 +164,17 @@ DocLayer is **not** a documentation wiki, RAG system, or AI memory store. It pro
 
 ## 🧭 Agent Entry Point: `doclayer explain`
 
-Before writing or refactoring code, an AI agent (or developer) runs `doclayer explain` on the target file or subsystem:
+Before modifying code, an autonomous AI agent (or developer) runs `doclayer explain` targeting the file or subsystem it intends to touch:
 
 ```bash
+# Human-readable contract, active prohibitions, and drift status (<1ms)
 doclayer explain src/modules/janitor/
+
+# Structured machine payload for AI agent tool calls
+doclayer explain src/modules/janitor/ --json
 ```
 
-#### Output:
-```text
-==============================================================================
- DOCLAYER GOVERNANCE CONTRACT: Kubernetes Namespace & Resource Janitor
-==============================================================================
-  Governing Spec:   .doclayer/kube-janitor.md
-  Package Root:     src/modules/janitor/
-  Owner:            @platform-infra (Alerts: EP-KUBE-JANITOR-TIER1)
-  Epistemic Score:  100.0% Stated (3 stated, 0 inferred, 0 unreferenced)
-
-1. Declared Invariant Contracts (3):
-  * max_eviction_batch_size = 200 [STATED]
-    Why: Prevent etcd write serialization bottleneck (RFC-204)
-  * dry_run_default = true [STATED]
-    Why: Prevent accidental mass deletion during CLI runs (INC-3301)
-  * default_ttl_hours = 24 [STATED]
-    Why: Default preview namespace lifespan (ADR-042)
-
-2. Agent Safety Harness & Prohibited Actions:
-  * PROHIBITED: Do not bypass rate limiting or spawn concurrent worker threads
-    On Error: `ERR_API_THROTTLED` -> Safe Action: Verify batch size <= 200; back off
-  * PROHIBITED: NEVER override protected namespace whitelist
-    On Error: `ERR_PROTECTED_NS` -> Safe Action: Abort run; check namespace filter rules
-  * Active Safety Firewalls: never_delete_protected_namespaces
-
-3. Real-Time AST Drift Status:
-  [PASS] Source code constants are fully aligned with declared DocLayer contracts.
-```
-
-For programmatic tool calls, pass `--json` to retrieve structured JSON payloads.
+DocLayer inspects the governing `.doclayer/<subsystem>.md` spec, checks live AST constants for drift, and surfaces active negative prohibitions (see [Dogfooding Example](#-dogfooding-doclayer-verifying-doclayer) above for live output).
 
 ---
 
