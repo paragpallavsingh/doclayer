@@ -62,6 +62,7 @@ Whenever assigned a task (feature, bug fix, policy adjustment, or refactor), you
    - *Direct Discovery:* Check `.doclayer/<subsystem>.md` matching the target module or feature name.
    - *Package Mapping:* Inspect the `**Package:**` header in existing layer files to find the specification governing the files you are about to edit.
 2. **Respect Declared Contracts & Prohibitions:** Implement logic strictly bounded by declared invariants, safety limits, and negative runbook prohibitions.
+   - *Non-Weakening Rule:* You must **never weaken, delete, or reclassify an authoritative safety invariant or runbook prohibition** to make an assigned task pass or succeed. If a legitimate contract conflict exists, stop and request human owner review.
 3. **Post-Edit Reflex:** After modifying code, determine whether durable engineering truth changed (invariants, boundaries, dependencies, failure modes).
 4. **Propose DocLayer Diff:** If durable truth changed, propose a Markdown diff for `.doclayer/<subsystem>.md` alongside your code diff for human PR review.
 5. **Epistemic Honesty:** Never invent fake references. Mark unverified rationales as `UNREFERENCED` or `[INFERRED]`. Run `doclayer check --debt` to audit knowledge debt and verify zero secret leaks.
@@ -69,6 +70,6 @@ Whenever assigned a task (feature, bug fix, policy adjustment, or refactor), you
 ---
 
 ## 🔒 Simplified Trust Model
-* **Agent → Proposes:** You generate code and propose DocLayer updates when durable contracts change.
-* **Human Owner → Verifies:** The subsystem owner reviews code + DocLayer diff together in the PR, resolving knowledge debt prompts.
+* **Agent → Proposes:** You generate code and propose DocLayer updates when durable contracts change. You cannot silently establish, weaken, or waive architectural authority.
+* **Human Owner → Verifies:** The subsystem owner reviews code + DocLayer diff together in the PR, resolving knowledge debt prompts and approving contract evolution.
 * **CI → Enforces:** `doclayer check` diagnostic linter ensures machine invariants match code AST constants and blocks secret leaks without mutating documents.
