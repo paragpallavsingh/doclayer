@@ -12,6 +12,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 COMMIT_DELIMITER = "---DOCLAYER_COMMIT_END---"
+GIT_COMMAND_TIMEOUT_SECONDS = 10
+MAX_MINED_COMMITS = 50
 
 TICKET_PATTERNS = [
     re.compile(r"(INC-\d+)", re.IGNORECASE),
@@ -67,7 +69,7 @@ def run_git_command(args: List[str], cwd: Path) -> Optional[str]:
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=10,
+            timeout=GIT_COMMAND_TIMEOUT_SECONDS,
         )
         if res.returncode == 0:
             return res.stdout.strip()
@@ -210,7 +212,7 @@ def mine_constant_origin(
 def mine_negative_runbooks(
     repo_path: Path,
     path_filter: Optional[Path] = None,
-    max_commits: int = 50,
+    max_commits: int = MAX_MINED_COMMITS,
 ) -> List[MinedNegativeInvariant]:
     """
     Mines repository git history for past incidents, bug fixes, and reverts.

@@ -13,6 +13,9 @@ from doclayer.git_miner import discover_subsystems, SubsystemDiscovery, get_repo
 from doclayer.parser import parse_layer_file
 from doclayer.validator import validate_file, ValidationReport
 
+MAX_CONSTANTS_PER_SUBSYSTEM = 8
+MAX_RUNBOOKS_PER_SUBSYSTEM = 5
+
 
 def _toml_value_repr(val: Any) -> str:
     """Formats a Python primitive into valid TOML representation."""
@@ -76,16 +79,24 @@ and operational reliability for `{pkg}`.
     seen_syms = set()
     selected_constants: List[Tuple[str, Any, str, int]] = []
 
+    from doclayer.secrets import scan_for_secrets
+
     for k, (val, raw_sym, lineno) in discovery.constants.items():
-        if raw_sym in seen_syms:
+        if raw_sym.startswith("_") or raw_sym in seen_syms:
+            continue
+        # Skip long strings, multi-line templates, ANSI codes
+        if isinstance(val, str) and (len(val) > 100 or "\n" in val or "\033" in val):
+            continue
+        # Security: Never auto-shift secret strings
+        if isinstance(val, str) and scan_for_secrets(val):
             continue
         seen_syms.add(raw_sym)
         # Use lowercase snake_case for toml key
         clean_key = re.sub(r"[^a-zA-Z0-9_]", "", raw_sym).lower()
         selected_constants.append((clean_key, val, raw_sym, lineno))
 
-    # Keep top 8 constants to maintain high signal-to-noise ratio
-    for clean_key, val, raw_sym, lineno in selected_constants[:8]:
+    # Keep top constants to maintain high signal-to-noise ratio
+    for clean_key, val, raw_sym, lineno in selected_constants[:MAX_CONSTANTS_PER_SUBSYSTEM]:
         toml_lines.append(f"{clean_key} = {_toml_value_repr(val)}")
 
         # Check if git miner found origin
@@ -137,7 +148,7 @@ safety_invariants = [
     # 3. Section 3: Failure Modes & Agent Safety Runbook
     runbook_rows: List[str] = []
     if discovery.mined_runbooks:
-        for rb in discovery.mined_runbooks[:5]:
+        for rb in discovery.mined_runbooks[:MAX_RUNBOOKS_PER_SUBSYSTEM]:
             runbook_rows.append(
                 f"| `{rb.symptom}` | {rb.probable_cause} | {rb.safe_remediation} | {rb.prohibited_actions} | `{rb.reference}` |"
             )

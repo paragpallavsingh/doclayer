@@ -30,6 +30,9 @@ def get_template_path() -> Path:
     if pkg_template.exists():
         return pkg_template
     # 2. Local dev template fallback
+    src_template = Path("src") / "doclayer" / "templates" / "subsystem.md"
+    if src_template.exists():
+        return src_template
     local_template = Path("doclayer") / "templates" / "subsystem.md"
     if local_template.exists():
         return local_template

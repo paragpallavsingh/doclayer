@@ -1,4 +1,4 @@
-﻿# Release Runbook
+# Release Runbook
 
 How to cut and publish a new version of `doclayer` to PyPI.
 
@@ -10,7 +10,7 @@ How to cut and publish a new version of `doclayer` to PyPI.
 - **Minor (`0.3.0`):** New features, options, or backward-compatible capabilities.
 - **Major (`1.0.0`):** Breaking changes or spec structure migrations.
 
-**Source of truth:** [`doclayer/__init__.py`](doclayer/__init__.py) (`__version__`).
+**Source of truth:** [`src/doclayer/__init__.py`](src/doclayer/__init__.py) (`__version__`).
 
 ---
 
@@ -20,7 +20,7 @@ How to cut and publish a new version of `doclayer` to PyPI.
 ```bash
 git checkout -b chore/bump-version
 ```
-Update `__version__` in `doclayer/__init__.py`:
+Update `__version__` in `src/doclayer/__init__.py`:
 ```python
 __version__ = "0.2.0"
 ```

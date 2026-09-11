@@ -40,11 +40,11 @@ dev = [
 doclayer = "doclayer.cli:main"
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
 include = ["doclayer*"]
 
 [tool.setuptools.package-data]
-doclayer = ["templates/*.md"]
+doclayer = ["templates/*.md", "templates/*.html"]
 
 [tool.setuptools.dynamic]
 version = {attr = "doclayer.__version__"}

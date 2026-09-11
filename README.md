@@ -58,18 +58,18 @@ DocLayer replaces ambiguous documentation with a clean, two-step contract workfl
 
 ## 🔁 Dogfooding: DocLayer Verifying DocLayer
 
-DocLayer uses its own engine to govern its own codebase via [`.doclayer/doclayer-core.md`](https://github.com/paragpallavsingh/doclayer/blob/main/.doclayer/doclayer-core.md):
+DocLayer uses its own engine to govern its own codebase via [`.doclayer/core.md`](https://github.com/paragpallavsingh/doclayer/blob/main/.doclayer/core.md):
 
 ### 1. Inspect Governance Contract Pre-Code
 ```bash
-$ doclayer explain doclayer/
+$ doclayer explain core
 ```
 ```text
 ==============================================================================
  DOCLAYER GOVERNANCE CONTRACT: doclayer Core Engine & Agent Harness
 ==============================================================================
-  Governing Spec:   .doclayer/doclayer-core.md
-  Package Root:     doclayer/
+  Governing Spec:   .doclayer/core.md
+  Package Root:     src/doclayer/
   Owner:            @doclayer-core (Alerts: EP-DOCLAYER-CORE)
   Epistemic Score:  100.0% Stated (5 stated, 0 inferred, 0 unreferenced)
 
@@ -91,15 +91,15 @@ $ doclayer explain doclayer/
 ```
 
 ### 2. Introduce Code Drift
-If a developer or AI agent edits `doclayer/validator.py` and changes `CORE_SECTIONS` from 4 to 5 without updating contracts:
+If a developer or AI agent edits `src/doclayer/validator.py` and changes `CORE_SECTIONS` from 4 to 5 without updating contracts:
 
 ```bash
 $ doclayer check --strict
 ```
 ```text
- [FAIL (STRICT DRIFT)]  .doclayer/doclayer-core.md (doclayer Core Engine & Agent Harness)
+ [FAIL (STRICT DRIFT)]  .doclayer/core.md (doclayer Core Engine & Agent Harness)
          [STRICT DRIFT ERROR] Invariant 'total_core_sections': DocLayer=4 vs Code AST=5 (validator.py:12)
-         Evidence Anchor: doclayer/validator.py::CORE_SECTIONS
+         Evidence Anchor: src/doclayer/validator.py::CORE_SECTIONS
 
 Failed 1 of 1 subsystem layer(s).
 ```
