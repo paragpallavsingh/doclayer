@@ -9,7 +9,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue?style=flat-square" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/dependencies-0%20external-brightgreen?style=flat-square" alt="Zero Dependencies">
-  <img src="https://img.shields.io/badge/tests-28%20passed-success?style=flat-square" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-39%20passed-success?style=flat-square" alt="Tests">
   <img src="https://img.shields.io/badge/latency-%3C1ms%20scan-cyan?style=flat-square" alt="Latency">
   <a href="https://www.producthunt.com/products/doclayer"><img src="https://img.shields.io/badge/Product%20Hunt-DocLayer-orange?style=flat-square&logo=producthunt" alt="Product Hunt"></a>
   <img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" alt="Apache 2.0">
@@ -58,18 +58,18 @@ DocLayer replaces ambiguous documentation with a clean, two-step contract workfl
 
 ## 🔁 Dogfooding: DocLayer Verifying DocLayer
 
-DocLayer uses its own engine to govern its own codebase via [`.doclayer/doclayer-core.md`](https://github.com/paragpallavsingh/doclayer/blob/main/.doclayer/doclayer-core.md):
+DocLayer uses its own engine to govern its own codebase via [`.doclayer/core.md`](https://github.com/paragpallavsingh/doclayer/blob/main/.doclayer/core.md):
 
 ### 1. Inspect Governance Contract Pre-Code
 ```bash
-$ doclayer explain doclayer/
+$ doclayer explain core
 ```
 ```text
 ==============================================================================
  DOCLAYER GOVERNANCE CONTRACT: doclayer Core Engine & Agent Harness
 ==============================================================================
-  Governing Spec:   .doclayer/doclayer-core.md
-  Package Root:     doclayer/
+  Governing Spec:   .doclayer/core.md
+  Package Root:     src/doclayer/
   Owner:            @doclayer-core (Alerts: EP-DOCLAYER-CORE)
   Epistemic Score:  100.0% Stated (5 stated, 0 inferred, 0 unreferenced)
 
@@ -91,15 +91,15 @@ $ doclayer explain doclayer/
 ```
 
 ### 2. Introduce Code Drift
-If a developer or AI agent edits `doclayer/validator.py` and changes `CORE_SECTIONS` from 4 to 5 without updating contracts:
+If a developer or AI agent edits `src/doclayer/validator.py` and changes `CORE_SECTIONS` from 4 to 5 without updating contracts:
 
 ```bash
 $ doclayer check --strict
 ```
 ```text
- [FAIL (STRICT DRIFT)]  .doclayer/doclayer-core.md (doclayer Core Engine & Agent Harness)
+ [FAIL (STRICT DRIFT)]  .doclayer/core.md (doclayer Core Engine & Agent Harness)
          [STRICT DRIFT ERROR] Invariant 'total_core_sections': DocLayer=4 vs Code AST=5 (validator.py:12)
-         Evidence Anchor: doclayer/validator.py::CORE_SECTIONS
+         Evidence Anchor: src/doclayer/validator.py::CORE_SECTIONS
 
 Failed 1 of 1 subsystem layer(s).
 ```
@@ -315,6 +315,29 @@ doclayer rca \
   --symptom "Janitor hung during eviction cycle" \
   --remediation "Inspect PDB health and verify timeout" \
   --prohibited "Do not force-evict pods when PDB controller is unreachable"
+```
+
+### 5. Synthesize Subsystems from Polyglot Code & Git History (`doclayer auto`)
+Automatically inspects the repository, discovers subsystems across **Python, TypeScript, JavaScript, Go, and Rust**, extracts exported code constants, mines `git log -S` for constant genesis rationales, and extracts negative runbooks from incident/revert commits:
+```bash
+# Preview auto-synthesized contracts
+doclayer auto . --dry-run
+
+# Synthesize and write machine-checked contracts to .doclayer/
+doclayer auto .
+
+# Overwrite existing contracts if refreshing
+doclayer auto . --force
+```
+
+### 6. Interactive Local Web Dashboard (`doclayer serve`)
+Launches an embedded, zero-dependency local web interface (DeepWiki browser view) to visually explore subsystem topology, active contracts, real-time AST drift status, and negative safety prohibitions:
+```bash
+# Start local hub on default port 8080 and open browser
+doclayer serve
+
+# Specify custom port or headless mode
+doclayer serve --port 3000 --no-browser
 ```
 
 ---

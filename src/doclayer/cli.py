@@ -30,6 +30,9 @@ def get_template_path() -> Path:
     if pkg_template.exists():
         return pkg_template
     # 2. Local dev template fallback
+    src_template = Path("src") / "doclayer" / "templates" / "subsystem.md"
+    if src_template.exists():
+        return src_template
     local_template = Path("doclayer") / "templates" / "subsystem.md"
     if local_template.exists():
         return local_template
@@ -96,8 +99,33 @@ def cmd_init(args: argparse.Namespace) -> int:
     content = content.replace("{{OWNER_TEAM}}", owner_team)
     content = content.replace("{{ALERT_CHANNEL}}", alert_channel)
     content = content.replace("{{OVERVIEW_DESCRIPTION}}", f"Handles core operations, contracts, and lifecycle for {title}.")
-    content = content.replace("{{CLIENT_CLASS}}", client_class)
-    content = content.replace("{{IMPORT_PATH}}", f"@/modules/{subsystem_slug}")
+    default_invariants = """[invariants]
+timeout_seconds = 3
+max_network_retries = 2
+
+[targets]
+latency_target_ms = 50
+
+[dependencies]
+upstream = ["upstream-service"]
+downstream = ["downstream-service"]
+state_dependencies = []
+identity_invariants = []
+safety_invariants = []"""
+    content = content.replace("{{INVARIANTS_BLOCK}}", default_invariants)
+    content = content.replace(
+        "{{INVARIANTS_TABLE}}",
+        f"| `timeout_seconds = 3` | Downstream SLA timeout threshold | `UNREFERENCED` | `{package_path}` |\n"
+        f"| `max_network_retries = 2` | Prevent thundering herd retry storms | `UNREFERENCED` | `{package_path}` |"
+    )
+    content = content.replace(
+        "{{RUNBOOK_TABLE}}",
+        "| `ERR_TIMEOUT` | Downstream service latency exceeded SLA. | Check downstream service health and connectivity. | Do not increase timeout above 5s without downstream team approval. | `UNREFERENCED` |"
+    )
+    content = content.replace(
+        "{{REFERENCES_BLOCK}}",
+        f"* Implementation: `{package_path}`\n* Decisions & Incidents: `UNREFERENCED`"
+    )
 
     output_dir.mkdir(parents=True, exist_ok=True)
     target_file.write_text(content, encoding="utf-8")
@@ -416,12 +444,23 @@ def cmd_explain(args: argparse.Namespace) -> int:
     print(f"  {BOLD}Owner:{RESET}            {doc.owner or 'Unassigned'}")
     print(f"  {BOLD}Epistemic Score:{RESET}  {CYAN}{report.epistemic_certainty_pct}% Stated{RESET} ({report.stated_count} stated, {report.inferred_count} inferred, {report.unreferenced_count} unreferenced)")
 
-    # 1. Active Contracts & Invariants
+    # 1. Active Contracts & Invariants (Contract + Verification State)
     print(f"\n{BOLD}1. Declared Invariant Contracts ({len(report.contracts)}):{RESET}")
+    drifts_by_key = {d.invariant_key.lower(): d for d in report.drifts}
     if report.contracts:
         for c in report.contracts:
+            inv_k = c.invariant_key or c.invariant_expr.split("=")[0].strip(" `")
+            clean_k = inv_k.lower()
+            drift_item = drifts_by_key.get(clean_k)
+
             status_tag = f"{GREEN}[STATED]{RESET}" if c.epistemic_status == "STATED" else (f"{MAGENTA}[INFERRED]{RESET}" if c.epistemic_status == "INFERRED" else f"{YELLOW}[UNREFERENCED]{RESET}")
-            print(f"  * {BOLD}{c.invariant_expr}{RESET} {status_tag}")
+            if drift_item:
+                verif_tag = f" {RED}{BOLD}[DRIFT]{RESET}"
+                print(f"  * {BOLD}{c.invariant_expr}{RESET} {status_tag}{verif_tag}")
+                print(f"    --> Code AST = {drift_item.code_value} ({drift_item.file_path.name}:{drift_item.line_number})")
+            else:
+                verif_tag = f" {GREEN}[VERIFIED]{RESET}"
+                print(f"  * {BOLD}{c.invariant_expr}{RESET} {status_tag}{verif_tag}")
             print(f"    Why: {c.rationale} ({c.reference})")
     else:
         print(f"  {DIM}No formal invariant rows parsed.{RESET}")
@@ -587,6 +626,69 @@ def cmd_rca(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_auto(args: argparse.Namespace) -> int:
+    """Discovers repo subsystems, extracts polyglot constants & git history, and synthesizes contracts."""
+    repo_path = Path(args.path).resolve()
+    output_dir = Path(args.dir)
+
+    print(f"{BOLD}doclayer auto: Synthesizing contracts from codebase & git history...{RESET}")
+    print(f"  Target:     {CYAN}{repo_path}{RESET}")
+    print(f"  Output Dir: {CYAN}{output_dir}{RESET}")
+
+    from doclayer.auto import synthesize_repo_layers
+
+    results = synthesize_repo_layers(
+        repo_path=repo_path,
+        output_dir=output_dir,
+        force=args.force,
+        dry_run=args.dry_run,
+    )
+
+    if not results:
+        print(f"{YELLOW}No source modules or code constants discovered.{RESET}")
+        return 0
+
+    success_count = 0
+    print()
+    for res in results:
+        if res.created:
+            success_count += 1
+            print(f" {GREEN}{BOLD}[SYNTHESIZED]{RESET} {BOLD}{res.target_file}{RESET}")
+            print(f"               Slug: {res.subsystem_slug} | Epistemic Grounding: {res.epistemic_score}% Stated")
+            print(f"               Invariants: {res.invariant_count} | Negative Runbooks: {res.negative_runbook_count}")
+        else:
+            print(f" {YELLOW}[SKIPPED]{RESET}     {res.target_file} - {res.message}")
+
+    print()
+    if args.dry_run:
+        print(f"{CYAN}{BOLD}[DRY RUN COMPLETE]{RESET} {len(results)} subsystem(s) evaluated.")
+        return 0
+
+    print(f"{GREEN}{BOLD}[OK] Synthesis complete:{RESET} Generated {success_count} of {len(results)} subsystem layer(s).")
+    print("Next steps:")
+    print("  - Run 'doclayer check' to verify all synthesized invariants.")
+    print("  - Run 'doclayer serve' to explore the DeepWiki browser UI.")
+    print("  - Run 'doclayer explain <subsystem>' for agent context.")
+    return 0
+
+
+def cmd_serve(args: argparse.Namespace) -> int:
+    """Launches embedded zero-dependency local web dashboard."""
+    layer_dir = Path(args.path)
+    if not layer_dir.exists() and Path("docs/layers").exists():
+        layer_dir = Path("docs/layers")
+
+    from doclayer.server import start_server
+
+    start_server(
+        host=args.host,
+        port=args.port,
+        layer_dir=layer_dir,
+        open_browser=not args.no_browser,
+    )
+    return 0
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         prog="doclayer",
@@ -595,6 +697,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
     subparsers = parser.add_subparsers(dest="command", help="Subcommands")
+
+    # auto (The Synthesis Command)
+    auto_parser = subparsers.add_parser("auto", help="Synthesize subsystem contracts from polyglot code & git history")
+    auto_parser.add_argument("path", nargs="?", default=".", help="Target repository or module path (default: .)")
+    auto_parser.add_argument("--dir", default=".doclayer", help="Destination directory (default: .doclayer)")
+    auto_parser.add_argument("-f", "--force", action="store_true", help="Overwrite existing layer files")
+    auto_parser.add_argument("--dry-run", action="store_true", help="Preview synthesized contracts without writing to disk")
+    auto_parser.set_defaults(func=cmd_auto)
+
+    # serve (DeepWiki Embedded Local Web UI)
+    serve_parser = subparsers.add_parser("serve", help="Launch embedded local web dashboard (DeepWiki browser)")
+    serve_parser.add_argument("--port", type=int, default=8080, help="HTTP port (default: 8080)")
+    serve_parser.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
+    serve_parser.add_argument("--path", default=".doclayer", help="Path to layer directory (default: .doclayer)")
+    serve_parser.add_argument("--no-browser", action="store_true", help="Do not open browser automatically")
+    serve_parser.set_defaults(func=cmd_serve)
 
     # explain (Primary Agent & Developer Entry Point)
     explain_parser = subparsers.add_parser("explain", help="Explain active contracts, safety prohibitions, and drift for a file or subsystem")
