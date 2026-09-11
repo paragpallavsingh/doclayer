@@ -20,6 +20,12 @@ You are operating within a codebase managed by **doclayer**. Subsystem specifica
 * **No Historical Redundancy:** Never write "previous values" or "conflict logs" into Markdown. Git handles history.
 * **No Fabricated References:** Never invent fake ADRs, RFCs, or incident numbers. If no reference exists, write `Reference: UNREFERENCED`. If deduced via heuristic hypothesis, prefix with `[INFERRED]`.
 
+### 📁 Strict Physical Isolation (Clean Code, Isolated Contracts):
+* **All contracts live EXCLUSIVELY under `.doclayer/` (`.doclayer/<subsystem>.md`).**
+* **Source directories (`src/`, `lib/`, `pkg/`) must remain pure, clean implementation code.**
+* **NEVER litter source folders with Markdown files or duplicate doc specs.**
+* **NEVER embed contract TOML fences, rationale tables, or runbooks inside source code comments or docstrings.** Code implements logic; DocLayer governs architecture.
+
 ---
 
 ## 🧠 The 4-Tier Epistemic Rationale Model
@@ -73,8 +79,10 @@ Whenever assigned a coding task (feature, bug fix, policy adjustment, or refacto
      - New failure modes, post-mortems, or negative safety runbooks (`PROHIBITED` actions).
      - Introduction of a new architectural subsystem domain (scaffold via `doclayer init <name>` or write `.doclayer/<name>.md`).
 
-4. ✍️ **Direct Working-Tree Mutation (No Speculative Diffs):**
-   - If the architectural threshold is met, **directly edit or scaffold `.doclayer/<subsystem>.md` on disk** in your git branch. Do NOT merely print diffs in chat or wait for human permission—your on-disk edit forms the PR proposal for human review.
+4. ✍️ **Direct Working-Tree Mutation (Dedicated `.doclayer/` Folder Only):**
+   - If the architectural threshold is met, **directly edit or scaffold `.doclayer/<subsystem>.md` on disk** in the root `.doclayer/` folder.
+   - Do NOT merely print diffs in chat or wait for human permission—your on-disk edit forms the PR proposal for human review.
+   - **Isolation Rule:** NEVER place Markdown or contract files inside source directories (`src/`, `lib/`, `pkg/`). Code files remain 100% clean implementation code.
    - *Epistemic Honesty:* Ground proven facts with `STATED` (citing tickets/ADRs/commits). Mark deduced heuristics as `[INFERRED]`. Never fabricate references.
 
 5. 🧪 **Single Exit Gate (`doclayer check`):**
