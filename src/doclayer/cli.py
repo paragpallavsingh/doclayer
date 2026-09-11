@@ -99,8 +99,33 @@ def cmd_init(args: argparse.Namespace) -> int:
     content = content.replace("{{OWNER_TEAM}}", owner_team)
     content = content.replace("{{ALERT_CHANNEL}}", alert_channel)
     content = content.replace("{{OVERVIEW_DESCRIPTION}}", f"Handles core operations, contracts, and lifecycle for {title}.")
-    content = content.replace("{{CLIENT_CLASS}}", client_class)
-    content = content.replace("{{IMPORT_PATH}}", f"@/modules/{subsystem_slug}")
+    default_invariants = """[invariants]
+timeout_seconds = 3
+max_network_retries = 2
+
+[targets]
+latency_target_ms = 50
+
+[dependencies]
+upstream = ["upstream-service"]
+downstream = ["downstream-service"]
+state_dependencies = []
+identity_invariants = []
+safety_invariants = []"""
+    content = content.replace("{{INVARIANTS_BLOCK}}", default_invariants)
+    content = content.replace(
+        "{{INVARIANTS_TABLE}}",
+        f"| `timeout_seconds = 3` | Downstream SLA timeout threshold | `UNREFERENCED` | `{package_path}` |\n"
+        f"| `max_network_retries = 2` | Prevent thundering herd retry storms | `UNREFERENCED` | `{package_path}` |"
+    )
+    content = content.replace(
+        "{{RUNBOOK_TABLE}}",
+        "| `ERR_TIMEOUT` | Downstream service latency exceeded SLA. | Check downstream service health and connectivity. | Do not increase timeout above 5s without downstream team approval. | `UNREFERENCED` |"
+    )
+    content = content.replace(
+        "{{REFERENCES_BLOCK}}",
+        f"* Implementation: `{package_path}`\n* Decisions & Incidents: `UNREFERENCED`"
+    )
 
     output_dir.mkdir(parents=True, exist_ok=True)
     target_file.write_text(content, encoding="utf-8")

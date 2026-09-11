@@ -32,48 +32,26 @@ def _toml_value_repr(val: Any) -> str:
     return f'"{val}"'
 
 
+def _load_subsystem_template() -> str:
+    """Loads the canonical subsystem.md template."""
+    pkg_template = Path(__file__).parent / "templates" / "subsystem.md"
+    if pkg_template.exists():
+        return pkg_template.read_text(encoding="utf-8-sig")
+    src_template = Path("src") / "doclayer" / "templates" / "subsystem.md"
+    if src_template.exists():
+        return src_template.read_text(encoding="utf-8-sig")
+    raise FileNotFoundError(f"Subsystem template not found at {pkg_template}")
+
+
 def generate_subsystem_contract(discovery: SubsystemDiscovery, repo_root: Path) -> str:
     """
     Generates a 4-section, machine-verifiable .doclayer/<subsystem>.md contract
-    grounded in extracted code constants and mined git history.
+    grounded in extracted code constants and mined git history using the canonical template.
     """
-    # 1. Header & Section 1: Overview & Topology
     title = discovery.name
     pkg = discovery.package_path
     owner = discovery.primary_owner
     alert_slug = discovery.slug.upper().replace("-", "_")
-
-    overview = f"""# Subsystem: {title}
-
-**Package:** `{pkg}`
-**Owner:** `{owner}` (Alerts: `EP-{alert_slug}-ALERTS`)
-
----
-
-## 1. Overview & Topology
-Core architectural subsystem managing business workflows, contract invariants,
-and operational reliability for `{pkg}`.
-
-```
-┌─────────────────────────────────┐
-│        Upstream Services        │
-└────────────────┬────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────┐
-│     Subsystem: {title:<17}│
-└────────────────┬────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────┐
-│       Downstream Services       │
-└─────────────────────────────────┘
-```
-"""
-
-    # 2. Section 2: Contracts & Invariants
-    toml_lines: List[str] = ["[invariants]"]
-    table_rows: List[str] = []
 
     # Filter unique constants (avoid aliases in toml)
     seen_syms = set()
@@ -91,15 +69,16 @@ and operational reliability for `{pkg}`.
         if isinstance(val, str) and scan_for_secrets(val):
             continue
         seen_syms.add(raw_sym)
-        # Use lowercase snake_case for toml key
         clean_key = re.sub(r"[^a-zA-Z0-9_]", "", raw_sym).lower()
         selected_constants.append((clean_key, val, raw_sym, lineno))
+
+    toml_lines: List[str] = ["[invariants]"]
+    table_rows: List[str] = []
 
     # Keep top constants to maintain high signal-to-noise ratio
     for clean_key, val, raw_sym, lineno in selected_constants[:MAX_CONSTANTS_PER_SUBSYSTEM]:
         toml_lines.append(f"{clean_key} = {_toml_value_repr(val)}")
 
-        # Check if git miner found origin
         origin = discovery.constant_origins.get(clean_key) or discovery.constant_origins.get(raw_sym.lower())
         if origin:
             rationale = origin.rationale
@@ -108,7 +87,6 @@ and operational reliability for `{pkg}`.
             rationale = "Configured baseline subsystem parameter"
             ref = "UNREFERENCED"
 
-        # Evidence anchor
         rel_src = discovery.source_files[0].relative_to(repo_root).as_posix() if discovery.source_files else pkg
         anchor = f"{rel_src}::{raw_sym}"
         table_rows.append(f"| `{clean_key} = {_toml_value_repr(val)}` | {rationale} | `{ref}` | `{anchor}` |")
@@ -120,32 +98,19 @@ and operational reliability for `{pkg}`.
         table_rows.append("| `active_workers_limit = 10` | Worker concurrency ceiling | `RFC-BASELINE` | `UNREFERENCED` |")
         table_rows.append("| `request_timeout_seconds = 30` | Request timeout threshold | `RFC-BASELINE` | `UNREFERENCED` |")
 
+    toml_lines.extend([
+        "",
+        "[dependencies]",
+        'upstream = ["api-gateway", "worker-queue"]',
+        'downstream = ["database", "cache-layer"]',
+        "safety_invariants = [",
+        '    "never_bypass_authorization",',
+        '    "never_execute_destructive_migrations_without_lock"',
+        "]",
+    ])
     toml_block = "\n".join(toml_lines)
     table_body = "\n".join(table_rows)
 
-    contracts_sec = f"""
----
-
-## 2. Contracts & Invariants
-
-```invariants
-{toml_block}
-
-[dependencies]
-upstream = ["api-gateway", "worker-queue"]
-downstream = ["database", "cache-layer"]
-safety_invariants = [
-    "never_bypass_authorization",
-    "never_execute_destructive_migrations_without_lock"
-]
-```
-
-| Invariant / Contract | Why & Rationale | Reference | Evidence Anchor |
-| :--- | :--- | :--- | :--- |
-{table_body}
-"""
-
-    # 3. Section 3: Failure Modes & Agent Safety Runbook
     runbook_rows: List[str] = []
     if discovery.mined_runbooks:
         for rb in discovery.mined_runbooks[:MAX_RUNBOOKS_PER_SUBSYSTEM]:
@@ -153,27 +118,14 @@ safety_invariants = [
                 f"| `{rb.symptom}` | {rb.probable_cause} | {rb.safe_remediation} | {rb.prohibited_actions} | `{rb.reference}` |"
             )
     else:
-        # High-signal standard safety runbooks
         runbook_rows.append(
             "| `ERR_TIMEOUT` | Upstream latency or downstream queue saturation | Inspect queue depth and scale workers | NEVER increase timeout arbitrarily without owner approval | `SLA-CONTRACT` |"
         )
         runbook_rows.append(
             "| `ERR_RESOURCE_EXHAUSTED` | Connection pool depletion or memory spike | Verify connection leaks and restart unhealthy pods | NEVER kill active transactions or truncate tables | `AUTHOR-DIRECTIVE` |"
         )
-
     runbook_body = "\n".join(runbook_rows)
 
-    runbook_sec = f"""
----
-
-## 3. Failure Modes & Agent Safety Runbook
-
-| Symptom / Error | Probable Root Cause | Safe Remediation | Prohibited Actions (What NOT to do) | Reference |
-| :--- | :--- | :--- | :--- | :--- |
-{runbook_body}
-"""
-
-    # 4. Section 4: References
     ref_items: List[str] = [f"* Source Package: `{pkg}`"]
     if discovery.source_files:
         for sf in discovery.source_files[:4]:
@@ -181,17 +133,23 @@ safety_invariants = [
             ref_items.append(f"* Code Implementation: `{rel_f}`")
     for origin in list(discovery.constant_origins.values())[:3]:
         ref_items.append(f"* Constant Genesis: `{origin.symbol_name}` ({origin.reference} by {origin.author})")
-
     ref_body = "\n".join(ref_items)
 
-    ref_sec = f"""
----
+    template = _load_subsystem_template()
+    content = template.replace("{{SUBSYSTEM_TITLE}}", title)
+    content = content.replace("{{PACKAGE_PATH}}", pkg)
+    content = content.replace("{{OWNER_TEAM}}", owner)
+    content = content.replace("{{ALERT_CHANNEL}}", f"EP-{alert_slug}-ALERTS")
+    content = content.replace(
+        "{{OVERVIEW_DESCRIPTION}}",
+        f"Core architectural subsystem managing business workflows, contract invariants, and operational reliability for `{pkg}`."
+    )
+    content = content.replace("{{INVARIANTS_BLOCK}}", toml_block)
+    content = content.replace("{{INVARIANTS_TABLE}}", table_body)
+    content = content.replace("{{RUNBOOK_TABLE}}", runbook_body)
+    content = content.replace("{{REFERENCES_BLOCK}}", ref_body)
 
-## 4. References
-{ref_body}
-"""
-
-    return overview + contracts_sec + runbook_sec + ref_sec
+    return content
 
 
 @dataclass
