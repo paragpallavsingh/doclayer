@@ -444,12 +444,23 @@ def cmd_explain(args: argparse.Namespace) -> int:
     print(f"  {BOLD}Owner:{RESET}            {doc.owner or 'Unassigned'}")
     print(f"  {BOLD}Epistemic Score:{RESET}  {CYAN}{report.epistemic_certainty_pct}% Stated{RESET} ({report.stated_count} stated, {report.inferred_count} inferred, {report.unreferenced_count} unreferenced)")
 
-    # 1. Active Contracts & Invariants
+    # 1. Active Contracts & Invariants (Contract + Verification State)
     print(f"\n{BOLD}1. Declared Invariant Contracts ({len(report.contracts)}):{RESET}")
+    drifts_by_key = {d.invariant_key.lower(): d for d in report.drifts}
     if report.contracts:
         for c in report.contracts:
+            inv_k = c.invariant_key or c.invariant_expr.split("=")[0].strip(" `")
+            clean_k = inv_k.lower()
+            drift_item = drifts_by_key.get(clean_k)
+
             status_tag = f"{GREEN}[STATED]{RESET}" if c.epistemic_status == "STATED" else (f"{MAGENTA}[INFERRED]{RESET}" if c.epistemic_status == "INFERRED" else f"{YELLOW}[UNREFERENCED]{RESET}")
-            print(f"  * {BOLD}{c.invariant_expr}{RESET} {status_tag}")
+            if drift_item:
+                verif_tag = f" {RED}{BOLD}[DRIFT]{RESET}"
+                print(f"  * {BOLD}{c.invariant_expr}{RESET} {status_tag}{verif_tag}")
+                print(f"    --> Code AST = {drift_item.code_value} ({drift_item.file_path.name}:{drift_item.line_number})")
+            else:
+                verif_tag = f" {GREEN}[VERIFIED]{RESET}"
+                print(f"  * {BOLD}{c.invariant_expr}{RESET} {status_tag}{verif_tag}")
             print(f"    Why: {c.rationale} ({c.reference})")
     else:
         print(f"  {DIM}No formal invariant rows parsed.{RESET}")

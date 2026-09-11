@@ -182,15 +182,26 @@ class DoclayerRequestHandler(BaseHTTPRequestHandler):
                 "reference": r.reference,
             })
 
-        # Format explain context for quick copy
+        # Format explain context for quick copy (Contract + Verification State)
         explain_lines = [
             f"=== DOCLAYER HARNESS: {rep.title} ===",
             f"Package: {doc.package} | Owner: {doc.owner}",
             "",
-            "1. Machine Invariants:",
+            "Protocol:",
+            "* If [VERIFIED]: Never introduce changes that cause contract drift.",
+            "* If [DRIFT]: Do not silently adopt drifted code as truth or alter contracts without human elevation.",
+            "",
+            "1. Machine Invariants (Contract + Verification State):",
         ]
         for c in rep.contracts:
-            explain_lines.append(f"  * {c.invariant_expr} [{c.epistemic_status}] (Ref: {c.reference})")
+            inv_k = c.invariant_key or c.invariant_expr.split("=")[0].strip(" `")
+            clean_k = inv_k.lower()
+            drift_item = drifts_by_key.get(clean_k)
+            if drift_item:
+                explain_lines.append(f"  * {c.invariant_expr} [{c.epistemic_status}] [DRIFT] (Ref: {c.reference})")
+                explain_lines.append(f"    --> Code AST = {drift_item.code_value} ({drift_item.file_path.name}:{drift_item.line_number})")
+            else:
+                explain_lines.append(f"  * {c.invariant_expr} [{c.epistemic_status}] [VERIFIED] (Ref: {c.reference})")
         explain_lines.append("")
         explain_lines.append("2. Prohibited Actions (What NOT to do):")
         for r in rep.runbook_items:
