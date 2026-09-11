@@ -142,11 +142,14 @@ def validate_layer_doc(doc: LayerDocument, check_drift: bool = True) -> Validati
     if doc.package and not src_files:
         warnings.append(f"Referenced package/source path '{doc.package}' was not found on disk.")
 
-    # 7. AST Code Drift Detection
+    # 7. AST Code Drift Detection (Polyglot: Python, TypeScript, JavaScript, Go, Rust)
     if check_drift and doc.invariants_data and src_files:
-        has_py_files = any(f.suffix == ".py" for f in src_files)
-        if not has_py_files:
-            warnings.append(f"Package '{doc.package}' contains non-Python source files. AST drift checks currently active for Python (.py); polyglot AST scanners (TypeScript, Go, Rust) scheduled for v0.2.")
+        supported_exts = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".go", ".rs"}
+        has_supported_files = any(f.suffix.lower() in supported_exts for f in src_files)
+        if not has_supported_files:
+            warnings.append(
+                f"Package '{doc.package}' contains non-supported source files. AST drift checks active for Python (.py), TypeScript/JavaScript (.ts, .js), Go (.go), and Rust (.rs)."
+            )
         else:
             drifts = detect_invariant_drift(doc.invariants_data, src_files)
 
