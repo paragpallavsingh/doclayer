@@ -587,6 +587,69 @@ def cmd_rca(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_auto(args: argparse.Namespace) -> int:
+    """Discovers repo subsystems, extracts polyglot constants & git history, and synthesizes contracts."""
+    repo_path = Path(args.path).resolve()
+    output_dir = Path(args.dir)
+
+    print(f"{BOLD}doclayer auto: Synthesizing contracts from codebase & git history...{RESET}")
+    print(f"  Target:     {CYAN}{repo_path}{RESET}")
+    print(f"  Output Dir: {CYAN}{output_dir}{RESET}")
+
+    from doclayer.auto import synthesize_repo_layers
+
+    results = synthesize_repo_layers(
+        repo_path=repo_path,
+        output_dir=output_dir,
+        force=args.force,
+        dry_run=args.dry_run,
+    )
+
+    if not results:
+        print(f"{YELLOW}No source modules or code constants discovered.{RESET}")
+        return 0
+
+    success_count = 0
+    print()
+    for res in results:
+        if res.created:
+            success_count += 1
+            print(f" {GREEN}{BOLD}[SYNTHESIZED]{RESET} {BOLD}{res.target_file}{RESET}")
+            print(f"               Slug: {res.subsystem_slug} | Epistemic Grounding: {res.epistemic_score}% Stated")
+            print(f"               Invariants: {res.invariant_count} | Negative Runbooks: {res.negative_runbook_count}")
+        else:
+            print(f" {YELLOW}[SKIPPED]{RESET}     {res.target_file} - {res.message}")
+
+    print()
+    if args.dry_run:
+        print(f"{CYAN}{BOLD}[DRY RUN COMPLETE]{RESET} {len(results)} subsystem(s) evaluated.")
+        return 0
+
+    print(f"{GREEN}{BOLD}[OK] Synthesis complete:{RESET} Generated {success_count} of {len(results)} subsystem layer(s).")
+    print("Next steps:")
+    print("  - Run 'doclayer check' to verify all synthesized invariants.")
+    print("  - Run 'doclayer serve' to explore the DeepWiki browser UI.")
+    print("  - Run 'doclayer explain <subsystem>' for agent context.")
+    return 0
+
+
+def cmd_serve(args: argparse.Namespace) -> int:
+    """Launches embedded zero-dependency local web dashboard."""
+    layer_dir = Path(args.path)
+    if not layer_dir.exists() and Path("docs/layers").exists():
+        layer_dir = Path("docs/layers")
+
+    from doclayer.server import start_server
+
+    start_server(
+        host=args.host,
+        port=args.port,
+        layer_dir=layer_dir,
+        open_browser=not args.no_browser,
+    )
+    return 0
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         prog="doclayer",
@@ -595,6 +658,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
     subparsers = parser.add_subparsers(dest="command", help="Subcommands")
+
+    # auto (The Synthesis Command)
+    auto_parser = subparsers.add_parser("auto", help="Synthesize subsystem contracts from polyglot code & git history")
+    auto_parser.add_argument("path", nargs="?", default=".", help="Target repository or module path (default: .)")
+    auto_parser.add_argument("--dir", default=".doclayer", help="Destination directory (default: .doclayer)")
+    auto_parser.add_argument("-f", "--force", action="store_true", help="Overwrite existing layer files")
+    auto_parser.add_argument("--dry-run", action="store_true", help="Preview synthesized contracts without writing to disk")
+    auto_parser.set_defaults(func=cmd_auto)
+
+    # serve (DeepWiki Embedded Local Web UI)
+    serve_parser = subparsers.add_parser("serve", help="Launch embedded local web dashboard (DeepWiki browser)")
+    serve_parser.add_argument("--port", type=int, default=8080, help="HTTP port (default: 8080)")
+    serve_parser.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
+    serve_parser.add_argument("--path", default=".doclayer", help="Path to layer directory (default: .doclayer)")
+    serve_parser.add_argument("--no-browser", action="store_true", help="Do not open browser automatically")
+    serve_parser.set_defaults(func=cmd_serve)
 
     # explain (Primary Agent & Developer Entry Point)
     explain_parser = subparsers.add_parser("explain", help="Explain active contracts, safety prohibitions, and drift for a file or subsystem")

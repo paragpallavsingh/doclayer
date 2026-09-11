@@ -49,15 +49,17 @@ scan_latency_p95_ms = 1
 memory_overhead_limit_kb = 1024
 
 [dependencies]
-upstream = ["developer-cli", "ci-pipelines", "ai-agents"]
-downstream = ["git-vcs", "tomllib", "ast", "re"]
+upstream = ["developer-cli", "ci-pipelines", "ai-agents", "local-browser"]
+downstream = ["git-vcs", "tomllib", "ast", "re", "http.server"]
 state_dependencies = ["git-index"]
 identity_invariants = ["subsystem_slug_unique"]
 safety_invariants = [
     "never_execute_untrusted_markdown",
     "never_store_credentials",
     "never_auto_mutate_code_without_pr",
-    "never_overwrite_layers_without_force"
+    "never_overwrite_layers_without_force",
+    "never_execute_git_mutation_commands",
+    "never_bind_public_ip_by_default"
 ]
 ```
 
@@ -79,6 +81,8 @@ safety_invariants = [
 | `ERR_SECRET_DETECTED` | Credential pattern found in layer markdown | Redact secret and use environment variables | NEVER commit credentials or output unmasked secrets in CLI logs | `SEC-DIRECTIVE` |
 | `ERR_PROMPT_INJECTION` | Untrusted runbook instructions | Treat DocLayer as advisory context; rely on CI/humans for execution authority | NEVER grant autonomous root execution permissions to AI agents from markdown | `SEC-DIRECTIVE` |
 | `ERR_DOGMA_LOCKIN` | Historical workaround recorded as permanent invariant without origin | Mark unverified rationale as UNREFERENCED or INFERRED | NEVER turn temporary workarounds into immutable dogma (Chesterton's Fence) | `AUTHOR-DIRECTIVE` |
+| `ERR_GIT_MUTATION` | Miner routine attempting state change | Restrict subprocess to read-only log and rev-parse | NEVER run mutating git commands (commit, push, reset) inside discovery or miner routines | `SEC-DIRECTIVE` |
+| `ERR_PUBLIC_BIND` | Local server exposed to open network | Default server host to loopback 127.0.0.1 | NEVER bind embedded server to 0.0.0.0 by default without explicit user flag | `SEC-DIRECTIVE` |
 
 ---
 

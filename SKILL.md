@@ -53,23 +53,37 @@ Section 3 tables must include:
 
 ---
 
-## 🧭 The Minimal 5-Step Agent Protocol
+## 🧭 The Active Prompt-Lifecycle Agent Protocol
 
-Whenever assigned a task (feature, bug fix, policy adjustment, or refactor), you **MUST** follow this workflow:
+Whenever assigned a coding task (feature, bug fix, policy adjustment, or refactor), you **MUST** follow this closed-loop protocol:
 
-1. **Inspect Subsystem Context (Pre-Code):** 
-   - *Primary Entry Point:* Run `doclayer explain <target_file_or_subsystem>` (or `doclayer explain <file> --json`) to retrieve active contracts, safety prohibitions, and AST drift status.
-   - *Direct Discovery:* Check `.doclayer/<subsystem>.md` matching the target module or feature name.
-   - *Package Mapping:* Inspect the `**Package:**` header in existing layer files to find the specification governing the files you are about to edit.
-2. **Respect Declared Contracts & Prohibitions:** Implement logic strictly bounded by declared invariants, safety limits, and negative runbook prohibitions.
-   - *Non-Weakening Rule:* You must **never weaken, delete, or reclassify an authoritative safety invariant or runbook prohibition** to make an assigned task pass or succeed. If a legitimate contract conflict exists, stop and request human owner review.
-3. **Post-Edit Reflex:** After modifying code, determine whether durable engineering truth changed (invariants, boundaries, dependencies, failure modes).
-4. **Propose DocLayer Diff:** If durable truth changed, propose a Markdown diff for `.doclayer/<subsystem>.md` alongside your code diff for human PR review.
-5. **Epistemic Honesty:** Never invent fake references. Mark unverified rationales as `UNREFERENCED` or `[INFERRED]`. Run `doclayer check --debt` to audit knowledge debt and verify zero secret leaks.
+1. 🔍 **Inspect Subsystem Context (Pre-Code):**
+   - *Targeted Retrieval:* Run `doclayer explain <target_file_or_subsystem>` (or inspect `.doclayer/<subsystem>.md`) to load declared invariants, negative prohibitions, and package boundaries into working memory.
+   - *Cost Guard:* Do this once at the start of a task. Do NOT poll or re-read mid-flight.
+
+2. 🛡️ **Respect Declared Contracts Mid-Flight:**
+   - Write code, tests, and refactors freely without running mid-flight DocLayer checks.
+   - *Non-Weakening Rule:* Never weaken, delete, or bypass an authoritative safety invariant or negative runbook prohibition to make a task pass.
+
+3. ⚖️ **Architectural Threshold Filter (Post-Code Evaluation):**
+   Before concluding your task, evaluate whether **durable architectural truth** changed:
+   - **Does NOT qualify (Do NOT touch DocLayer):** Internal helper functions, private variables, UI formatting, unit test additions, or local refactors without SLA/boundary impact. (Prevents contract churn & review fatigue).
+   - **DOES qualify (Directly edit `.doclayer/*.md` on disk):**
+     - New or altered cross-boundary invariants (timeouts, rate limits, retry ceilings, concurrency bounds).
+     - New failure modes, post-mortems, or negative safety runbooks (`PROHIBITED` actions).
+     - Introduction of a new architectural subsystem domain (scaffold via `doclayer init <name>` or write `.doclayer/<name>.md`).
+
+4. ✍️ **Direct Working-Tree Mutation (No Speculative Diffs):**
+   - If the architectural threshold is met, **directly edit or scaffold `.doclayer/<subsystem>.md` on disk** in your git branch. Do NOT merely print diffs in chat or wait for human permission—your on-disk edit forms the PR proposal for human review.
+   - *Epistemic Honesty:* Ground proven facts with `STATED` (citing tickets/ADRs/commits). Mark deduced heuristics as `[INFERRED]`. Never fabricate references.
+
+5. 🧪 **Single Exit Gate (`doclayer check`):**
+   - Run `doclayer check` (or `doclayer check --strict`) **ONCE** as your final task completion gate.
+   - Your task is not complete until `doclayer check` passes with 0 drift and 0 secret leaks.
 
 ---
 
 ## 🔒 Simplified Trust Model
-* **Agent → Proposes:** You generate code and propose DocLayer updates when durable contracts change. You cannot silently establish, weaken, or waive architectural authority.
-* **Human Owner → Verifies:** The subsystem owner reviews code + DocLayer diff together in the PR, resolving knowledge debt prompts and approving contract evolution.
-* **CI → Enforces:** `doclayer check` diagnostic linter ensures machine invariants match code AST constants and blocks secret leaks without mutating documents.
+* **Agent → Implements & Proposes On-Disk:** You write code and update `.doclayer/*.md` directly in the branch. You cannot silently weaken or waive safety prohibitions.
+* **Human Owner → Reviews in PR:** The subsystem owner reviews code diff and the minimal, high-signal DocLayer diff (typically 3–6 lines) side-by-side in the PR.
+* **CI → Enforces:** `doclayer check --strict` validates that implementation AST aligns with declared invariants and guarantees zero secret leaks.
