@@ -208,6 +208,16 @@ class DoclayerRequestHandler(BaseHTTPRequestHandler):
             if r.prohibited_actions:
                 explain_lines.append(f"  * On {r.symptom}: {r.prohibited_actions}")
 
+        pipelines_list = []
+        for p in rep.pipelines:
+            pipelines_list.append({
+                "function_name": p.function_name,
+                "inputs": p.inputs,
+                "transformation": p.transformation,
+                "output_state": p.output_state,
+                "evidence_anchor": p.evidence_anchor,
+            })
+
         resp = {
             "title": rep.title,
             "slug": target_file.stem.lower(),
@@ -215,6 +225,7 @@ class DoclayerRequestHandler(BaseHTTPRequestHandler):
             "owner": doc.owner or "@team",
             "epistemic_certainty_pct": rep.epistemic_certainty_pct,
             "contracts": contracts_list,
+            "pipelines": pipelines_list,
             "runbooks": runbooks_list,
             "explain_text": "\n".join(explain_lines),
         }

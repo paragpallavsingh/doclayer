@@ -9,7 +9,7 @@
 {{OVERVIEW_DESCRIPTION}}
 
 ```
-[Upstream Caller] --> [{{SUBSYSTEM_TITLE}} Service] --> [Downstream Dependency]
+{{CALL_FLOW_DIAGRAM}}
 ```
 
 ---
@@ -23,6 +23,12 @@
 | Invariant / Contract | Why & Rationale | Reference | Evidence Anchor |
 | :--- | :--- | :--- | :--- |
 {{INVARIANTS_TABLE}}
+
+### Core Execution Pipelines & Data Transformations
+
+| Pipeline / Function | Trigger / Inputs | Core Transformation / Business Logic | Output / State Change | Evidence Anchor |
+| :--- | :--- | :--- | :--- | :--- |
+{{PIPELINES_TABLE}}
 
 ---
 

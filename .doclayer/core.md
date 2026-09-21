@@ -68,6 +68,14 @@ safety_invariants = [
 | `primary_agent_entrypoint = "explain"` | Single entry point for coding agents to inspect contracts and safety prohibitions pre-code | `AUTHOR-DIRECTIVE` | `src/doclayer/cli.py::cmd_explain` |
 | `scan_latency_p95_ms = 1` | Pre-commit hook latency threshold for seamless local developer experience | `SPEC-PERF-TARGET` | `scripts/benchmark_efficiency.py::benchmark_single_layer_parse` |
 
+### Core Execution Pipelines & Data Transformations
+
+| Pipeline / Function | Trigger / Inputs | Core Transformation / Business Logic | Output / State Change | Evidence Anchor |
+| :--- | :--- | :--- | :--- | :--- |
+| `cmd_explain()` | `args: Namespace (subsystem target)` | Retrieves declared contract, formats verification state, and displays agent safety runbooks | Outputs high-signal CLI contract | `src/doclayer/cli.py::cmd_explain` |
+| `cmd_check()` | `args: Namespace (path, strict, changed)` | Validates markdown structure, AST drift, secrets, and epistemic debt | Exits 0 (pass) or 1 (drift/error) | `src/doclayer/cli.py::cmd_check` |
+| `synthesize_repo_layers()` | `(repo_path, output_dir, force, dry_run)` | Discovers polyglot codebases, traces call flows, extracts AST pipelines & constants, mines git post-mortems | Writes `.doclayer/<slug>.md` layers | `src/doclayer/auto.py::synthesize_repo_layers` |
+
 ---
 
 ## 3. Failure Modes & Agent Safety Runbook

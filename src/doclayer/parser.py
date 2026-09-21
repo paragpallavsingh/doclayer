@@ -55,6 +55,15 @@ class RunbookItem:
 
 
 @dataclass
+class PipelineItem:
+    function_name: str
+    inputs: str
+    transformation: str
+    output_state: str
+    evidence_anchor: str
+
+
+@dataclass
 class SemanticDependencies:
     upstream: List[str] = field(default_factory=list)
     downstream: List[str] = field(default_factory=list)
@@ -76,6 +85,7 @@ class LayerDocument:
     raw_invariants: Optional[str] = None
     invariants_data: Optional[Dict[str, Any]] = None
     contracts: List[ContractItem] = field(default_factory=list)
+    pipelines: List[PipelineItem] = field(default_factory=list)
     runbook_items: List[RunbookItem] = field(default_factory=list)
     semantic_deps: SemanticDependencies = field(default_factory=SemanticDependencies)
     parse_errors: List[str] = field(default_factory=list)
@@ -98,21 +108,48 @@ def parse_invariants_toml(toml_str: str) -> Tuple[Optional[Dict[str, Any]], Opti
         return None, f"TOML parse error: {e}"
 
 
+def parse_all_markdown_tables(table_text: str) -> List[List[Dict[str, str]]]:
+    """Parses all markdown tables in text into a list of tables (each table is a list of row dicts)."""
+    tables: List[List[Dict[str, str]]] = []
+    current_block: List[str] = []
+
+    for line in table_text.splitlines():
+        line_s = line.strip()
+        if line_s.startswith("|"):
+            current_block.append(line_s)
+        else:
+            if len(current_block) >= 3:
+                # Process current block
+                headers = [col.strip() for col in current_block[0].strip("|").split("|")]
+                rows: List[Dict[str, str]] = []
+                for row_line in current_block[2:]:
+                    cols = [c.strip() for c in row_line.strip("|").split("|")]
+                    if len(cols) == len(headers):
+                        rows.append(dict(zip(headers, cols)))
+                if rows:
+                    tables.append(rows)
+            current_block = []
+
+    if len(current_block) >= 3:
+        headers = [col.strip() for col in current_block[0].strip("|").split("|")]
+        rows = []
+        for row_line in current_block[2:]:
+            cols = [c.strip() for c in row_line.strip("|").split("|")]
+            if len(cols) == len(headers):
+                rows.append(dict(zip(headers, cols)))
+        if rows:
+            tables.append(rows)
+
+    return tables
+
+
 def parse_markdown_table(table_text: str) -> List[Dict[str, str]]:
-    """Parses a standard markdown table into a list of row dictionaries."""
-    lines = [l.strip() for l in table_text.splitlines() if l.strip().startswith("|")]
-    if len(lines) < 3:
-        return []
-    
-    # Extract headers
-    headers = [col.strip() for col in lines[0].strip("|").split("|")]
-    # line 1 is separator (e.g., | :--- | :--- |)
-    rows: List[Dict[str, str]] = []
-    for line in lines[2:]:
-        cols = [c.strip() for c in line.strip("|").split("|")]
-        if len(cols) == len(headers):
-            rows.append(dict(zip(headers, cols)))
-    return rows
+    """Parses standard markdown tables into a flattened list of row dictionaries."""
+    all_tables = parse_all_markdown_tables(table_text)
+    flattened: List[Dict[str, str]] = []
+    for tbl in all_tables:
+        flattened.extend(tbl)
+    return flattened
 
 
 def classify_epistemic_status(rationale: str, reference: str) -> str:
@@ -199,6 +236,31 @@ def extract_runbook_from_section(section_content: str) -> List[RunbookItem]:
                     safe_remediation=remediation,
                     prohibited_actions=prohibited,
                     reference=ref,
+                )
+            )
+    return items
+
+
+def extract_pipelines_from_section(section_content: str) -> List[PipelineItem]:
+    """Parses Section 2 Execution Pipelines table."""
+    items: List[PipelineItem] = []
+    rows = parse_markdown_table(section_content)
+
+    for row in rows:
+        fn_name = row.get("Pipeline / Function") or row.get("Function") or row.get("Pipeline") or ""
+        inputs = row.get("Trigger / Inputs") or row.get("Inputs") or row.get("Trigger") or ""
+        trans = row.get("Core Transformation / Business Logic") or row.get("Transformation") or row.get("Business Logic") or ""
+        out_state = row.get("Output / State Change") or row.get("Output") or row.get("State Change") or ""
+        anchor = row.get("Evidence Anchor") or row.get("Anchor") or ""
+
+        if fn_name or trans:
+            items.append(
+                PipelineItem(
+                    function_name=fn_name,
+                    inputs=inputs,
+                    transformation=trans,
+                    output_state=out_state,
+                    evidence_anchor=anchor,
                 )
             )
     return items
@@ -298,10 +360,12 @@ def parse_layer_file(file_path: Path) -> LayerDocument:
     sec_2 = doc.sections.get(2)
     if sec_2:
         doc.contracts = extract_contracts_from_section(sec_2.content)
+        doc.pipelines = extract_pipelines_from_section(sec_2.content)
     else:
         for sec in doc.sections.values():
             if "contract" in sec.title.lower() or "invariant" in sec.title.lower():
                 doc.contracts = extract_contracts_from_section(sec.content)
+                doc.pipelines = extract_pipelines_from_section(sec.content)
                 break
 
     # Extract Runbook & Negative Invariants (Section 3 or any section matching 'Runbook' or 'Failure')

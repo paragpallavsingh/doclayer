@@ -10,6 +10,7 @@ from doclayer.parser import (
     parse_layer_file,
     parse_markdown_table,
     ContractItem,
+    PipelineItem,
     RunbookItem,
     SemanticDependencies,
 )
@@ -46,6 +47,7 @@ class ValidationReport:
     secret_violations: List[SecretViolation] = field(default_factory=list)
     knowledge_debt: List[KnowledgeDebtItem] = field(default_factory=list)
     contracts: List[ContractItem] = field(default_factory=list)
+    pipelines: List[PipelineItem] = field(default_factory=list)
     runbook_items: List[RunbookItem] = field(default_factory=list)
     semantic_deps: SemanticDependencies = field(default_factory=SemanticDependencies)
     epistemic_certainty_pct: float = 100.0
@@ -206,6 +208,7 @@ def validate_layer_doc(doc: LayerDocument, check_drift: bool = True) -> Validati
         secret_violations=secret_violations,
         knowledge_debt=knowledge_debt,
         contracts=doc.contracts,
+        pipelines=doc.pipelines,
         runbook_items=doc.runbook_items,
         semantic_deps=doc.semantic_deps,
         epistemic_certainty_pct=round(epistemic_certainty, 1),
