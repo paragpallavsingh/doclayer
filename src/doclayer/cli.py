@@ -413,6 +413,16 @@ def cmd_explain(args: argparse.Namespace) -> int:
             ],
             "safety_invariants": report.semantic_deps.safety_invariants,
             "safety_firewalls": report.semantic_deps.safety_invariants,
+            "pipelines": [
+                {
+                    "function": p.function_name,
+                    "inputs": p.inputs,
+                    "transformation": p.transformation,
+                    "output_state": p.output_state,
+                    "anchor": p.evidence_anchor,
+                }
+                for p in report.pipelines
+            ],
             "drift_status": "PASS" if not report.drifts else "DRIFT_DETECTED",
             "drifts": [
                 {
@@ -478,8 +488,18 @@ def cmd_explain(args: argparse.Namespace) -> int:
     if report.semantic_deps.safety_invariants:
         print(f"  * {BOLD}Active Safety Invariants:{RESET} {', '.join(report.semantic_deps.safety_invariants)}")
 
-    # 3. Real-Time AST Drift Status
-    print(f"\n{BOLD}3. Real-Time AST Drift Status:{RESET}")
+    # 3. Core Execution Pipelines & Data Transformations (Option A + B)
+    if report.pipelines:
+        print(f"\n{BOLD}3. Core Execution Pipelines & Data Transformations ({len(report.pipelines)}):{RESET}")
+        for p in report.pipelines:
+            print(f"  * {CYAN}{BOLD}{p.function_name}{RESET}")
+            if p.inputs and p.inputs != "None / Environment":
+                print(f"    Inputs:  {p.inputs}")
+            print(f"    Logic:   {p.transformation}")
+            print(f"    Mutates: {p.output_state}")
+
+    # 4. Real-Time AST Drift Status
+    print(f"\n{BOLD}4. Real-Time AST Drift Status:{RESET}")
     if not report.drifts:
         print(f"  {GREEN}[PASS]{RESET} Source code constants are fully aligned with declared DocLayer contracts.")
     else:
@@ -487,9 +507,9 @@ def cmd_explain(args: argparse.Namespace) -> int:
         for d in report.drifts:
             print(f"    - Invariant '{d.invariant_key}': DocLayer={d.doc_value} vs Code={d.code_value} ({d.file_path.name}:{d.line_number})")
 
-    # 4. Knowledge Debt Prompts
+    # 5. Knowledge Debt Prompts
     if report.knowledge_debt:
-        print(f"\n{YELLOW}{BOLD}4. Actionable Knowledge Debt ({len(report.knowledge_debt)}):{RESET}")
+        print(f"\n{YELLOW}{BOLD}5. Actionable Knowledge Debt ({len(report.knowledge_debt)}):{RESET}")
         for item in report.knowledge_debt:
             print(f"  [ ] {item.invariant_expr} ({item.epistemic_status}): {item.action_prompt}")
 

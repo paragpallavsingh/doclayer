@@ -135,6 +135,24 @@ def generate_subsystem_contract(discovery: SubsystemDiscovery, repo_root: Path) 
         ref_items.append(f"* Constant Genesis: `{origin.symbol_name}` ({origin.reference} by {origin.author})")
     ref_body = "\n".join(ref_items)
 
+    # Polyglot AST Call-Flow and Behavioral Pipeline Synthesis (Option A + B)
+    from doclayer.callflow import analyze_polyglot_files
+    callflow = analyze_polyglot_files(discovery.source_files, repo_root)
+
+    callflow_diagram = callflow.ascii_diagram or f"[Upstream Caller] --> [{title} Service] --> [Downstream Dependency]"
+
+    pipeline_rows: List[str] = []
+    if callflow.pipelines:
+        for p in callflow.pipelines[:6]:
+            pipeline_rows.append(
+                f"| {p.function_name} | {p.inputs} | {p.transformation} | {p.output_state} | {p.evidence_anchor} |"
+            )
+    else:
+        pipeline_rows.append(
+            f"| `execute_pipeline()` | `(context)` | Coordinates end-to-end subsystem workflow and contract validation | Returns processing result | `{pkg}` |"
+        )
+    pipelines_body = "\n".join(pipeline_rows)
+
     template = _load_subsystem_template()
     content = template.replace("{{SUBSYSTEM_TITLE}}", title)
     content = content.replace("{{PACKAGE_PATH}}", pkg)
@@ -144,8 +162,10 @@ def generate_subsystem_contract(discovery: SubsystemDiscovery, repo_root: Path) 
         "{{OVERVIEW_DESCRIPTION}}",
         f"Core architectural subsystem managing business workflows, contract invariants, and operational reliability for `{pkg}`."
     )
+    content = content.replace("{{CALL_FLOW_DIAGRAM}}", callflow_diagram)
     content = content.replace("{{INVARIANTS_BLOCK}}", toml_block)
     content = content.replace("{{INVARIANTS_TABLE}}", table_body)
+    content = content.replace("{{PIPELINES_TABLE}}", pipelines_body)
     content = content.replace("{{RUNBOOK_TABLE}}", runbook_body)
     content = content.replace("{{REFERENCES_BLOCK}}", ref_body)
 

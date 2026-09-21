@@ -53,6 +53,13 @@ safety_invariants = [
 | `max_constants_per_subsystem = 8` | Caps generated contract constants to maintain a concise, high-signal contract | `AUTHOR-DIRECTIVE` | `src/doclayer/auto.py::MAX_CONSTANTS_PER_SUBSYSTEM` |
 | `max_runbooks_per_subsystem = 5` | Limit synthesized runbook entries to prioritize the highest-severity failure modes | `AUTHOR-DIRECTIVE` | `src/doclayer/auto.py::MAX_RUNBOOKS_PER_SUBSYSTEM` |
 
+### Core Execution Pipelines & Data Transformations
+
+| Pipeline / Function | Trigger / Inputs | Core Transformation / Business Logic | Output / State Change | Evidence Anchor |
+| :--- | :--- | :--- | :--- | :--- |
+| `generate_subsystem_contract()` | `(discovery: SubsystemDiscovery, repo_root: Path)` | Synthesizes polyglot constants, traces AST call flows, extracts pipeline contracts, and mines git history into 4-section layer spec | Returns rendered markdown string | `src/doclayer/auto.py::generate_subsystem_contract` |
+| `synthesize_repo_layers()` | `(repo_path, output_dir, force, dry_run)` | Scans repository root, discovers polyglot packages, and generates machine-verifiable `.doclayer/*.md` files | Writes layer files to disk & returns `List[AutoResult]` | `src/doclayer/auto.py::synthesize_repo_layers` |
+
 ---
 
 ## 3. Failure Modes & Agent Safety Runbook
