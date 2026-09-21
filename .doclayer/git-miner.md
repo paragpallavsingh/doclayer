@@ -53,6 +53,14 @@ safety_invariants = [
 | `git_command_timeout_seconds = 10` | Caps git subprocess execution to prevent hanging on corrupted repos or locks | `SEC-DIRECTIVE` | `src/doclayer/git_miner.py::GIT_COMMAND_TIMEOUT_SECONDS` |
 | `max_mined_commits = 50` | Bound log traversal depth to maintain fast synthesis under 100ms | `PERF-TARGET` | `src/doclayer/git_miner.py::MAX_MINED_COMMITS` |
 
+### Core Execution Pipelines & Data Transformations
+
+| Pipeline / Function | Trigger / Inputs | Core Transformation / Business Logic | Output / State Change | Evidence Anchor |
+| :--- | :--- | :--- | :--- | :--- |
+| `mine_constant_origin()` | `(symbol_name: str, repo_path: Path)` | Traverses git pickaxe history (`git log -S`) to find commit genesis and author rationale | Returns `Optional[ConstantOrigin]` | `src/doclayer/git_miner.py::mine_constant_origin` |
+| `mine_negative_runbooks()` | `(repo_path: Path, max_commits: int)` | Identifies historical reverts and incident patches to extract negative safety prohibitions | Returns `List[MinedNegativeInvariant]` | `src/doclayer/git_miner.py::mine_negative_runbooks` |
+| `discover_subsystems()` | `(repo_path: Path)` | Discovers candidate subsystem directories, parses code files, and extracts AST symbols | Returns `List[SubsystemDiscovery]` | `src/doclayer/git_miner.py::discover_subsystems` |
+
 ---
 
 ## 3. Failure Modes & Agent Safety Runbook

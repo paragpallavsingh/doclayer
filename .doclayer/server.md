@@ -52,6 +52,14 @@ safety_invariants = [
 | `default_bind_address = "127.0.0.1"` | Bind strictly to loopback to prevent local network exposure without explicit opt-in | `SEC-DIRECTIVE` | `src/doclayer/server.py::DEFAULT_BIND_ADDRESS` |
 | `default_port_number = 8080` | Standard non-privileged developer web port | `AUTHOR-DIRECTIVE` | `src/doclayer/server.py::DEFAULT_PORT_NUMBER` |
 
+### Core Execution Pipelines & Data Transformations
+
+| Pipeline / Function | Trigger / Inputs | Core Transformation / Business Logic | Output / State Change | Evidence Anchor |
+| :--- | :--- | :--- | :--- | :--- |
+| `handle_api_status()` | HTTP `GET /api/status` | Aggregates subsystem validation reports, AST drifts, and epistemic metrics | Serves system-wide status JSON | `src/doclayer/server.py::handle_api_status` |
+| `handle_api_subsystem()` | HTTP `GET /api/subsystems/<slug>` | Extracts contracts, AST verification status, negative runbooks, and pipeline definitions | Serves subsystem JSON spec | `src/doclayer/server.py::handle_api_subsystem` |
+| `start_server()` | `(host: str, port: int, layer_dir: Path, open_browser: bool)` | Initializes `HTTPServer` with `DoclayerRequestHandler` and launches browser | Starts local daemon server | `src/doclayer/server.py::start_server` |
+
 ---
 
 ## 3. Failure Modes & Agent Safety Runbook
